@@ -1,0 +1,1627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trading Performance Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #020617;
+      --panel: rgba(15, 23, 42, 0.92);
+      --panel-2: rgba(30, 41, 59, 0.85);
+      --line: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --blue: #38bdf8;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --purple: #a78bfa;
+      --shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: radial-gradient(circle at top, #0f172a 0%, #020617 65%);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 30px;
+    }
+
+    .brand p {
+      margin: 8px 0 0;
+      color: var(--muted);
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .auth-card,
+    .section-panel {
+      padding: 18px;
+    }
+
+    .hidden { display: none !important; }
+
+    .status {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--text);
+      border: 1px solid rgba(56, 189, 248, 0.22);
+    }
+
+    .status.success { background: rgba(34, 197, 94, 0.12); border-color: rgba(34, 197, 94, 0.22); }
+    .status.error { background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.22); }
+
+    .auth-grid,
+    .form-grid,
+    .filter-grid,
+    .charts-grid,
+    .period-grid,
+    .insights-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .auth-grid { grid-template-columns: repeat(3, minmax(180px, 1fr)); }
+    .form-grid { grid-template-columns: repeat(4, minmax(160px, 1fr)); }
+    .filter-grid { grid-template-columns: repeat(6, minmax(140px, 1fr)); }
+    .charts-grid { grid-template-columns: repeat(2, minmax(280px, 1fr)); }
+    .period-grid { grid-template-columns: repeat(3, minmax(220px, 1fr)); }
+    .insights-grid { grid-template-columns: repeat(4, minmax(200px, 1fr)); }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field.full { grid-column: 1 / -1; }
+
+    .field label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    input, select, textarea, button {
+      font: inherit;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 12px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(2, 6, 23, 0.8);
+      color: var(--text);
+      outline: none;
+    }
+
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+
+    input[readonly] {
+      background: rgba(15, 23, 42, 0.75);
+      color: #cbd5e1;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      cursor: pointer;
+      transition: 0.18s ease;
+      font-weight: 700;
+    }
+
+    button:hover { transform: translateY(-1px); }
+
+    .btn-primary { background: var(--blue); color: #08212b; }
+    .btn-muted { background: #334155; color: white; }
+    .btn-danger { background: var(--red); color: white; }
+    .btn-success { background: var(--green); color: white; }
+    .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .section-subtitle {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card,
+    .mini-card,
+    .insight-card,
+    .chart-card {
+      padding: 16px;
+    }
+
+    .stat-card h3,
+    .mini-card h3,
+    .insight-card h3 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stat-card .value,
+    .mini-card .value,
+    .insight-card .value {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.15;
+    }
+
+    .mini-card .meta,
+    .insight-card .meta {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .positive { color: var(--green); }
+    .negative { color: var(--red); }
+    .neutral { color: var(--text); }
+    .accent { color: var(--blue); }
+    .warning { color: var(--yellow); }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 430px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(2, 6, 23, 0.8);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1700px;
+    }
+
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #111827;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    tr:hover td {
+      background: rgba(51, 65, 85, 0.18);
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .tag-win { background: rgba(34, 197, 94, 0.15); color: var(--green); }
+    .tag-loss { background: rgba(239, 68, 68, 0.15); color: var(--red); }
+    .tag-be { background: rgba(245, 158, 11, 0.15); color: var(--yellow); }
+    .tag-yes { background: rgba(56, 189, 248, 0.14); color: var(--blue); }
+    .tag-no { background: rgba(239, 68, 68, 0.14); color: var(--red); }
+
+    .chart-card h3 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    .chart-note {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 10px;
+    }
+
+    .table-actions,
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .small-btn {
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-size: 12px;
+    }
+
+    .empty {
+      padding: 30px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .footer-note {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .user-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.18);
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .span-2 { grid-column: span 2; }
+
+    @media (max-width: 1400px) {
+      .stats-grid { grid-template-columns: repeat(4, minmax(180px, 1fr)); }
+      .form-grid { grid-template-columns: repeat(3, minmax(160px, 1fr)); }
+      .filter-grid { grid-template-columns: repeat(4, minmax(150px, 1fr)); }
+      .insights-grid { grid-template-columns: repeat(2, minmax(200px, 1fr)); }
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 980px) {
+      .stats-grid,
+      .charts-grid,
+      .period-grid,
+      .auth-grid,
+      .filter-grid,
+      .form-grid,
+      .insights-grid { grid-template-columns: 1fr; }
+
+      .brand h1 { font-size: 25px; }
+      .span-2 { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div class="brand">
+        <h1>Trading Performance Tracker</h1>
+        <p>Cross-device trading journal with Firebase login, cloud sync, analytics, charts, filters, and trade review tracking.</p>
+      </div>
+      <div class="toolbar">
+        <div class="user-pill hidden" id="userPill"></div>
+        <button class="btn-danger hidden" id="logoutBtn" type="button">Log Out</button>
+      </div>
+    </div>
+
+    <div class="panel auth-card" id="authPanel">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title">Log in from any device</h2>
+          <p class="section-subtitle">Use the same email and password on phone, laptop, or tablet to see the same trading data everywhere.</p>
+        </div>
+      </div>
+      <div class="auth-grid">
+        <div class="field">
+          <label for="authEmail">Email</label>
+          <input type="email" id="authEmail" placeholder="you@example.com" />
+        </div>
+        <div class="field">
+          <label for="authPassword">Password</label>
+          <input type="password" id="authPassword" placeholder="Minimum 6 characters" />
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <div class="toolbar">
+            <button class="btn-primary" id="loginBtn" type="button">Log In</button>
+            <button class="btn-success" id="signupBtn" type="button">Create Account</button>
+          </div>
+        </div>
+      </div>
+      <div class="status" id="authStatus">Ready. Create an account once, then log in with the same account on all devices.</div>
+    </div>
+
+    <div id="appShell" class="hidden">
+      <div class="stats-grid" id="statsGrid"></div>
+
+      <div class="panel section-panel" style="margin-bottom: 20px;">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Quick insights</h2>
+            <p class="section-subtitle">Fast view of what is working and where mistakes are happening.</p>
+          </div>
+        </div>
+        <div class="insights-grid" id="insightsGrid"></div>
+      </div>
+
+      <div class="panel section-panel" style="margin-bottom: 20px;">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Daily / Weekly / Monthly overview</h2>
+            <p class="section-subtitle">Choose any date to inspect the day, week, and month around it.</p>
+          </div>
+          <div class="field" style="min-width: 220px;">
+            <label for="periodDate">Reference Date</label>
+            <input type="date" id="periodDate" />
+          </div>
+        </div>
+        <div class="period-grid" id="periodGrid"></div>
+      </div>
+
+      <div class="panel section-panel" style="margin-bottom: 20px;">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Historical charts</h2>
+            <p class="section-subtitle">Automatically built from your saved trades.</p>
+          </div>
+          <div class="toolbar">
+            <select id="chartRange">
+              <option value="all">All Data</option>
+              <option value="365">Last 365 Days</option>
+              <option value="90">Last 90 Days</option>
+              <option value="30">Last 30 Days</option>
+              <option value="7">Last 7 Days</option>
+            </select>
+          </div>
+        </div>
+        <div class="charts-grid">
+          <div class="panel chart-card"><h3>Cumulative Net Profit</h3><canvas id="cumulativeProfitChart" height="120"></canvas></div>
+          <div class="panel chart-card"><h3>Cumulative Pips</h3><canvas id="cumulativePipsChart" height="120"></canvas></div>
+          <div class="panel chart-card"><h3>Daily Net Profit / Loss</h3><canvas id="dailyNetChart" height="120"></canvas></div>
+          <div class="panel chart-card"><h3>Daily Profitable Pips</h3><canvas id="dailyPositivePipsChart" height="120"></canvas></div>
+          <div class="panel chart-card"><h3>Daily Loss Pips</h3><canvas id="dailyLossPipsChart" height="120"></canvas></div>
+          <div class="panel chart-card"><h3>Daily Pips Used</h3><canvas id="dailyPipsUsedChart" height="120"></canvas></div>
+          <div class="panel chart-card"><h3>Pair Performance</h3><canvas id="pairPerformanceChart" height="120"></canvas></div>
+          <div class="panel chart-card"><h3>Setup Performance</h3><canvas id="setupPerformanceChart" height="120"></canvas></div>
+          <div class="panel chart-card"><h3>Session Performance</h3><canvas id="sessionPerformanceChart" height="120"></canvas></div>
+          <div class="panel chart-card"><h3>Drawdown History</h3><canvas id="drawdownChart" height="120"></canvas></div>
+        </div>
+        <div class="footer-note">Net profit in this tracker is calculated as <strong>gross profit/loss minus fees/commission</strong>.</div>
+      </div>
+
+      <div class="main-grid">
+        <div class="panel section-panel">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title" id="formHeading">Add Trade</h2>
+              <p class="section-subtitle">Enter each trade once. The dashboard calculates the rest automatically.</p>
+            </div>
+          </div>
+          <form id="tradeForm">
+            <div class="form-grid">
+              <div class="field">
+                <label for="tradeDate">Trade Date</label>
+                <input type="date" id="tradeDate" required />
+              </div>
+              <div class="field">
+                <label for="entryTime">Entry Time</label>
+                <input type="time" id="entryTime" />
+              </div>
+              <div class="field">
+                <label for="exitTime">Exit Time</label>
+                <input type="time" id="exitTime" />
+              </div>
+              <div class="field">
+                <label for="tradeDuration">Trade Duration</label>
+                <input type="text" id="tradeDuration" readonly placeholder="Auto calculated" />
+              </div>
+
+              <div class="field">
+                <label for="pair">Pair / Market</label>
+                <input type="text" id="pair" placeholder="EURUSD / XAUUSD / BTCUSD" required />
+              </div>
+              <div class="field">
+                <label for="direction">Buy / Sell</label>
+                <select id="direction" required>
+                  <option value="Buy">Buy</option>
+                  <option value="Sell">Sell</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="setupType">Setup Type</label>
+                <input list="setupList" id="setupType" placeholder="Breakout / Pullback / Reversal" />
+                <datalist id="setupList">
+                  <option value="Breakout"></option>
+                  <option value="Pullback"></option>
+                  <option value="Trend Continuation"></option>
+                  <option value="Reversal"></option>
+                  <option value="Support/Resistance"></option>
+                  <option value="Liquidity Sweep"></option>
+                </datalist>
+              </div>
+              <div class="field">
+                <label for="session">Session</label>
+                <select id="session">
+                  <option value="">Select</option>
+                  <option value="London">London</option>
+                  <option value="New York">New York</option>
+                  <option value="Asia">Asia</option>
+                  <option value="Overlap">Overlap</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="entryPrice">Entry Price</label>
+                <input type="number" id="entryPrice" step="0.00001" placeholder="Optional" />
+              </div>
+              <div class="field">
+                <label for="exitPrice">Exit Price</label>
+                <input type="number" id="exitPrice" step="0.00001" placeholder="Optional" />
+              </div>
+              <div class="field">
+                <label for="stopLoss">Stop Loss</label>
+                <input type="number" id="stopLoss" step="0.00001" placeholder="Optional" />
+              </div>
+              <div class="field">
+                <label for="takeProfit">Take Profit</label>
+                <input type="number" id="takeProfit" step="0.00001" placeholder="Optional" />
+              </div>
+
+              <div class="field">
+                <label for="lotSize">Lot Size</label>
+                <input type="number" id="lotSize" step="0.01" placeholder="e.g. 0.50" />
+              </div>
+              <div class="field">
+                <label for="riskPercent">Risk %</label>
+                <input type="number" id="riskPercent" step="0.01" placeholder="e.g. 1" />
+              </div>
+              <div class="field">
+                <label for="grossPL">Gross Profit / Loss ($)</label>
+                <input type="number" id="grossPL" step="0.01" placeholder="Before fees" required />
+              </div>
+              <div class="field">
+                <label for="fees">Fees / Commission ($)</label>
+                <input type="number" id="fees" step="0.01" value="0" />
+              </div>
+
+              <div class="field">
+                <label for="netPL">Net Profit / Loss ($)</label>
+                <input type="number" id="netPL" step="0.01" readonly />
+              </div>
+              <div class="field">
+                <label for="pips">Pips Result</label>
+                <input type="number" id="pips" step="0.1" placeholder="e.g. 18 or -12" required />
+              </div>
+              <div class="field">
+                <label for="pipsUsed">Pips Used per Trade</label>
+                <input type="number" id="pipsUsed" step="0.1" placeholder="e.g. 10" required />
+              </div>
+              <div class="field">
+                <label for="plannedRR">Planned RR</label>
+                <input type="number" id="plannedRR" step="0.01" placeholder="e.g. 2" />
+              </div>
+
+              <div class="field">
+                <label for="actualRR">Actual RR</label>
+                <input type="number" id="actualRR" step="0.01" placeholder="e.g. 1.8" />
+              </div>
+              <div class="field">
+                <label for="result">Result</label>
+                <select id="result" required>
+                  <option value="Win">Win</option>
+                  <option value="Loss">Loss</option>
+                  <option value="Break-even">Break-even</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="followedRules">Followed Rules?</label>
+                <select id="followedRules">
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="mistakeType">Mistake Type</label>
+                <select id="mistakeType">
+                  <option value="">None</option>
+                  <option value="Entered too early">Entered too early</option>
+                  <option value="Entered too late">Entered too late</option>
+                  <option value="No confirmation">No confirmation</option>
+                  <option value="Poor risk management">Poor risk management</option>
+                  <option value="Emotional trade">Emotional trade</option>
+                  <option value="Revenge trade">Revenge trade</option>
+                  <option value="Closed too early">Closed too early</option>
+                  <option value="Held loser too long">Held loser too long</option>
+                  <option value="Ignored stop loss">Ignored stop loss</option>
+                  <option value="Overtrading">Overtrading</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="emotionBefore">Emotion Before</label>
+                <input list="emotionList" id="emotionBefore" placeholder="Calm / Fearful / Confident" />
+              </div>
+              <div class="field">
+                <label for="emotionAfter">Emotion After</label>
+                <input list="emotionList" id="emotionAfter" placeholder="Satisfied / Frustrated" />
+                <datalist id="emotionList">
+                  <option value="Calm"></option>
+                  <option value="Confident"></option>
+                  <option value="Fearful"></option>
+                  <option value="Greedy"></option>
+                  <option value="Frustrated"></option>
+                  <option value="Neutral"></option>
+                  <option value="Satisfied"></option>
+                </datalist>
+              </div>
+              <div class="field">
+                <label for="accountBalanceAfter">Account Balance After Trade ($)</label>
+                <input type="number" id="accountBalanceAfter" step="0.01" placeholder="Optional" />
+              </div>
+              <div class="field full">
+                <label for="notes">Notes</label>
+                <textarea id="notes" placeholder="Why you entered, what went right, what went wrong, psychology notes, market context..."></textarea>
+              </div>
+            </div>
+
+            <div class="form-actions" style="margin-top: 16px;">
+              <button class="btn-primary" type="submit" id="saveTradeBtn">Save Trade</button>
+              <button class="btn-muted" type="button" id="resetFormBtn">Reset</button>
+            </div>
+          </form>
+          <div class="footer-note">Tip: trade duration and net profit are calculated automatically from your form values.</div>
+        </div>
+
+        <div>
+          <div class="panel section-panel" style="margin-bottom: 20px;">
+            <div class="section-head">
+              <div>
+                <h2 class="section-title">Search & filters</h2>
+                <p class="section-subtitle">Find trades fast and isolate specific mistakes, pairs, sessions, or time ranges.</p>
+              </div>
+            </div>
+            <div class="filter-grid">
+              <div class="field span-2">
+                <label for="searchInput">Search</label>
+                <input type="text" id="searchInput" placeholder="Search pair, setup, notes, emotions, mistake type..." />
+              </div>
+              <div class="field">
+                <label for="filterResult">Result</label>
+                <select id="filterResult">
+                  <option value="">All</option>
+                  <option value="Win">Win</option>
+                  <option value="Loss">Loss</option>
+                  <option value="Break-even">Break-even</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="filterSession">Session</label>
+                <select id="filterSession">
+                  <option value="">All</option>
+                  <option value="London">London</option>
+                  <option value="New York">New York</option>
+                  <option value="Asia">Asia</option>
+                  <option value="Overlap">Overlap</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="filterRules">Followed Rules</label>
+                <select id="filterRules">
+                  <option value="">All</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="filterPair">Pair</label>
+                <input type="text" id="filterPair" placeholder="EURUSD" />
+              </div>
+              <div class="field">
+                <label for="filterSetup">Setup Type</label>
+                <input type="text" id="filterSetup" placeholder="Breakout" />
+              </div>
+              <div class="field">
+                <label for="filterMistake">Mistake Type</label>
+                <input type="text" id="filterMistake" placeholder="Emotional trade" />
+              </div>
+              <div class="field">
+                <label for="filterFromDate">From Date</label>
+                <input type="date" id="filterFromDate" />
+              </div>
+              <div class="field">
+                <label for="filterToDate">To Date</label>
+                <input type="date" id="filterToDate" />
+              </div>
+              <div class="field">
+                <label>&nbsp;</label>
+                <button type="button" class="btn-ghost" id="clearFiltersBtn">Clear Filters</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel section-panel">
+            <div class="section-head">
+              <div>
+                <h2 class="section-title">Trade history</h2>
+                <p class="section-subtitle">Edit or delete any trade. Changes sync across devices automatically.</p>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Entry</th>
+                    <th>Exit</th>
+                    <th>Duration</th>
+                    <th>Pair</th>
+                    <th>Dir</th>
+                    <th>Setup</th>
+                    <th>Session</th>
+                    <th>Gross P/L</th>
+                    <th>Fees</th>
+                    <th>Net P/L</th>
+                    <th>Pips</th>
+                    <th>Pips Used</th>
+                    <th>Planned RR</th>
+                    <th>Actual RR</th>
+                    <th>Rules</th>
+                    <th>Mistake</th>
+                    <th>Emotion</th>
+                    <th>Balance After</th>
+                    <th>Notes</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="tradeTableBody"></tbody>
+              </table>
+            </div>
+            <div class="footer-note">When hosted on GitHub Pages, add your GitHub Pages domain to Firebase Authentication authorised domains before logging in there.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getAuth,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      doc,
+      updateDoc,
+      deleteDoc,
+      onSnapshot
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBi3-nPivj0Wd6mPNo8ZTTZLt_TQZUjU80",
+      authDomain: "trading-statistics-tracking.firebaseapp.com",
+      projectId: "trading-statistics-tracking",
+      storageBucket: "trading-statistics-tracking.firebasestorage.app",
+      messagingSenderId: "493862544915",
+      appId: "1:493862544915:web:4a8cc65efe2d7f151881e6",
+      measurementId: "G-CHVF595L0E"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const $ = (id) => document.getElementById(id);
+
+    const authPanel = $("authPanel");
+    const appShell = $("appShell");
+    const userPill = $("userPill");
+    const authStatus = $("authStatus");
+    const loginBtn = $("loginBtn");
+    const signupBtn = $("signupBtn");
+    const logoutBtn = $("logoutBtn");
+    const authEmail = $("authEmail");
+    const authPassword = $("authPassword");
+
+    const tradeForm = $("tradeForm");
+    const tradeDate = $("tradeDate");
+    const entryTime = $("entryTime");
+    const exitTime = $("exitTime");
+    const tradeDuration = $("tradeDuration");
+    const pair = $("pair");
+    const direction = $("direction");
+    const setupType = $("setupType");
+    const session = $("session");
+    const entryPrice = $("entryPrice");
+    const exitPrice = $("exitPrice");
+    const stopLoss = $("stopLoss");
+    const takeProfit = $("takeProfit");
+    const lotSize = $("lotSize");
+    const riskPercent = $("riskPercent");
+    const grossPL = $("grossPL");
+    const fees = $("fees");
+    const netPL = $("netPL");
+    const pips = $("pips");
+    const pipsUsed = $("pipsUsed");
+    const plannedRR = $("plannedRR");
+    const actualRR = $("actualRR");
+    const result = $("result");
+    const followedRules = $("followedRules");
+    const mistakeType = $("mistakeType");
+    const emotionBefore = $("emotionBefore");
+    const emotionAfter = $("emotionAfter");
+    const accountBalanceAfter = $("accountBalanceAfter");
+    const notes = $("notes");
+    const saveTradeBtn = $("saveTradeBtn");
+    const resetFormBtn = $("resetFormBtn");
+    const formHeading = $("formHeading");
+
+    const searchInput = $("searchInput");
+    const filterResult = $("filterResult");
+    const filterSession = $("filterSession");
+    const filterRules = $("filterRules");
+    const filterPair = $("filterPair");
+    const filterSetup = $("filterSetup");
+    const filterMistake = $("filterMistake");
+    const filterFromDate = $("filterFromDate");
+    const filterToDate = $("filterToDate");
+    const clearFiltersBtn = $("clearFiltersBtn");
+
+    const chartRange = $("chartRange");
+    const statsGrid = $("statsGrid");
+    const insightsGrid = $("insightsGrid");
+    const periodGrid = $("periodGrid");
+    const tradeTableBody = $("tradeTableBody");
+    const periodDate = $("periodDate");
+
+    tradeDate.value = new Date().toISOString().split("T")[0];
+    periodDate.value = tradeDate.value;
+
+    let trades = [];
+    let editingId = null;
+    let unsubscribeTrades = null;
+    const chartInstances = {};
+
+    function setStatus(message, type = "") {
+      authStatus.textContent = message;
+      authStatus.className = `status ${type}`.trim();
+    }
+
+    function safeNumber(value) {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function optionalNumber(value) {
+      if (value === "" || value === null || value === undefined) return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    function formatMoney(value) {
+      return `$${safeNumber(value).toFixed(2)}`;
+    }
+
+    function formatNum(value, digits = 1) {
+      return safeNumber(value).toFixed(digits);
+    }
+
+    function escapeHTML(value = "") {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function resultTag(value) {
+      if (value === "Win") return '<span class="tag tag-win">Win</span>';
+      if (value === "Loss") return '<span class="tag tag-loss">Loss</span>';
+      return '<span class="tag tag-be">Break-even</span>';
+    }
+
+    function rulesTag(value) {
+      return value === "Yes"
+        ? '<span class="tag tag-yes">Yes</span>'
+        : '<span class="tag tag-no">No</span>';
+    }
+
+    function durationMinutesFromInputs(dateValue, entryValue, exitValue) {
+      if (!dateValue || !entryValue || !exitValue) return 0;
+      const entryDate = new Date(`${dateValue}T${entryValue}`);
+      let exitDate = new Date(`${dateValue}T${exitValue}`);
+      let diff = (exitDate - entryDate) / 60000;
+      if (diff < 0) diff += 24 * 60;
+      return Math.max(0, Math.round(diff));
+    }
+
+    function formatDuration(minutes) {
+      const total = safeNumber(minutes);
+      if (!total) return "0m";
+      const h = Math.floor(total / 60);
+      const m = total % 60;
+      if (!h) return `${m}m`;
+      return `${h}h ${m}m`;
+    }
+
+    function updateDurationPreview() {
+      const mins = durationMinutesFromInputs(tradeDate.value, entryTime.value, exitTime.value);
+      tradeDuration.value = mins ? formatDuration(mins) : "";
+    }
+
+    function updateNetPreview() {
+      const value = safeNumber(grossPL.value) - safeNumber(fees.value);
+      netPL.value = Number.isFinite(value) ? value.toFixed(2) : "0.00";
+    }
+
+    function resetForm() {
+      editingId = null;
+      tradeForm.reset();
+      tradeDate.value = new Date().toISOString().split("T")[0];
+      periodDate.value = periodDate.value || tradeDate.value;
+      direction.value = "Buy";
+      result.value = "Win";
+      followedRules.value = "Yes";
+      fees.value = 0;
+      tradeDuration.value = "";
+      netPL.value = "0.00";
+      formHeading.textContent = "Add Trade";
+      saveTradeBtn.textContent = "Save Trade";
+    }
+
+    function getUserTradesCollection(uid) {
+      return collection(db, "users", uid, "trades");
+    }
+
+    function sortTradesDesc(items) {
+      return [...items].sort((a, b) => {
+        const aKey = `${a.date || ""}_${String(a.createdAt || 0).padStart(15, "0")}`;
+        const bKey = `${b.date || ""}_${String(b.createdAt || 0).padStart(15, "0")}`;
+        return bKey.localeCompare(aKey);
+      });
+    }
+
+    function sortTradesAsc(items) {
+      return [...items].sort((a, b) => {
+        const aKey = `${a.date || ""}_${String(a.createdAt || 0).padStart(15, "0")}`;
+        const bKey = `${b.date || ""}_${String(b.createdAt || 0).padStart(15, "0")}`;
+        return aKey.localeCompare(bKey);
+      });
+    }
+
+    function getFormTrade() {
+      const durationMins = durationMinutesFromInputs(tradeDate.value, entryTime.value, exitTime.value);
+      const gross = safeNumber(grossPL.value);
+      const feeValue = safeNumber(fees.value);
+      return {
+        date: tradeDate.value,
+        entryTime: entryTime.value || "",
+        exitTime: exitTime.value || "",
+        tradeDurationMinutes: durationMins,
+        pair: pair.value.trim().toUpperCase(),
+        direction: direction.value,
+        setupType: setupType.value.trim(),
+        session: session.value,
+        entryPrice: optionalNumber(entryPrice.value),
+        exitPrice: optionalNumber(exitPrice.value),
+        stopLoss: optionalNumber(stopLoss.value),
+        takeProfit: optionalNumber(takeProfit.value),
+        lotSize: optionalNumber(lotSize.value),
+        riskPercent: optionalNumber(riskPercent.value),
+        grossPL: gross,
+        fees: feeValue,
+        netPL: Number((gross - feeValue).toFixed(2)),
+        pips: safeNumber(pips.value),
+        pipsUsed: safeNumber(pipsUsed.value),
+        plannedRR: optionalNumber(plannedRR.value),
+        actualRR: optionalNumber(actualRR.value),
+        result: result.value,
+        followedRules: followedRules.value,
+        mistakeType: mistakeType.value,
+        emotionBefore: emotionBefore.value.trim(),
+        emotionAfter: emotionAfter.value.trim(),
+        accountBalanceAfter: optionalNumber(accountBalanceAfter.value),
+        notes: notes.value.trim(),
+        updatedAt: Date.now()
+      };
+    }
+
+    async function createAccount() {
+      try {
+        const email = authEmail.value.trim();
+        const password = authPassword.value.trim();
+        if (!email || !password) {
+          setStatus("Enter email and password first.", "error");
+          return;
+        }
+        await createUserWithEmailAndPassword(auth, email, password);
+        setStatus("Account created. You are now logged in.", "success");
+      } catch (error) {
+        setStatus(error.message, "error");
+      }
+    }
+
+    async function login() {
+      try {
+        const email = authEmail.value.trim();
+        const password = authPassword.value.trim();
+        if (!email || !password) {
+          setStatus("Enter email and password first.", "error");
+          return;
+        }
+        await signInWithEmailAndPassword(auth, email, password);
+        setStatus("Logged in successfully.", "success");
+      } catch (error) {
+        setStatus(error.message, "error");
+      }
+    }
+
+    async function logout() {
+      try {
+        await signOut(auth);
+        setStatus("Logged out.", "success");
+      } catch (error) {
+        setStatus(error.message, "error");
+      }
+    }
+
+    function mountTradeSubscription(user) {
+      if (unsubscribeTrades) unsubscribeTrades();
+      unsubscribeTrades = onSnapshot(getUserTradesCollection(user.uid), (snapshot) => {
+        trades = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+        renderAll();
+      }, (error) => {
+        setStatus(error.message, "error");
+      });
+    }
+
+    function clearCharts() {
+      Object.values(chartInstances).forEach((instance) => instance?.destroy());
+      Object.keys(chartInstances).forEach((key) => delete chartInstances[key]);
+    }
+
+    function groupedDailyData(items) {
+      const map = {};
+      sortTradesAsc(items).forEach((trade) => {
+        const date = trade.date || "Unknown";
+        if (!map[date]) {
+          map[date] = { date, netPL: 0, positivePips: 0, lossPips: 0, pipsUsed: 0 };
+        }
+        map[date].netPL += safeNumber(trade.netPL);
+        const pipValue = safeNumber(trade.pips);
+        if (pipValue > 0) map[date].positivePips += pipValue;
+        if (pipValue < 0) map[date].lossPips += Math.abs(pipValue);
+        map[date].pipsUsed += safeNumber(trade.pipsUsed);
+      });
+      return Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
+    }
+
+    function withinRangeByDays(dateValue, days) {
+      if (days === "all") return true;
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      const cutoff = new Date();
+      cutoff.setHours(0, 0, 0, 0);
+      cutoff.setDate(cutoff.getDate() - Number(days) + 1);
+      const current = new Date(`${dateValue}T00:00:00`);
+      return current >= cutoff && current <= today;
+    }
+
+    function getChartTradeSlice() {
+      const range = chartRange.value;
+      return sortTradesAsc(trades).filter((trade) => withinRangeByDays(trade.date, range));
+    }
+
+    function createChart(id, type, labels, datasetLabel, data, color, options = {}) {
+      const ctx = $(id);
+      if (!ctx) return;
+      const config = {
+        type,
+        data: {
+          labels,
+          datasets: [{
+            label: datasetLabel,
+            data,
+            borderColor: color,
+            backgroundColor: `${color}33`,
+            fill: type === "line",
+            tension: 0.24,
+            borderWidth: 2,
+            pointRadius: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: "#cbd5e1" } }
+          },
+          scales: {
+            x: {
+              ticks: { color: "#94a3b8" },
+              grid: { color: "rgba(148,163,184,0.08)" }
+            },
+            y: {
+              ticks: { color: "#94a3b8" },
+              grid: { color: "rgba(148,163,184,0.08)" }
+            }
+          },
+          ...options
+        }
+      };
+      chartInstances[id] = new Chart(ctx, config);
+    }
+
+    function renderCharts() {
+      clearCharts();
+      const chartTrades = getChartTradeSlice();
+      const chronological = sortTradesAsc(chartTrades);
+      const dates = chronological.map((trade) => trade.date);
+
+      let runningProfit = 0;
+      let runningPips = 0;
+      let peak = 0;
+      const cumulativeProfit = [];
+      const cumulativePips = [];
+      const drawdown = [];
+
+      chronological.forEach((trade) => {
+        runningProfit += safeNumber(trade.netPL);
+        runningPips += safeNumber(trade.pips);
+        peak = Math.max(peak, runningProfit);
+        cumulativeProfit.push(Number(runningProfit.toFixed(2)));
+        cumulativePips.push(Number(runningPips.toFixed(1)));
+        drawdown.push(Number((peak - runningProfit).toFixed(2)));
+      });
+
+      const daily = groupedDailyData(chartTrades);
+      const dailyLabels = daily.map((row) => row.date);
+
+      const aggregateByField = (field) => {
+        const map = {};
+        chartTrades.forEach((trade) => {
+          const key = trade[field] || "Unknown";
+          map[key] = (map[key] || 0) + safeNumber(trade.netPL);
+        });
+        return Object.entries(map)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 12);
+      };
+
+      const pairAgg = aggregateByField("pair");
+      const setupAgg = aggregateByField("setupType");
+      const sessionAgg = aggregateByField("session");
+
+      createChart("cumulativeProfitChart", "line", dates, "Cumulative Net Profit", cumulativeProfit, "#38bdf8");
+      createChart("cumulativePipsChart", "line", dates, "Cumulative Pips", cumulativePips, "#22c55e");
+      createChart("dailyNetChart", "line", dailyLabels, "Daily Net P/L", daily.map((x) => Number(x.netPL.toFixed(2))), "#a78bfa");
+      createChart("dailyPositivePipsChart", "bar", dailyLabels, "Daily Profitable Pips", daily.map((x) => Number(x.positivePips.toFixed(1))), "#22c55e", { scales: { x: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(148,163,184,0.08)" } }, y: { beginAtZero: true, ticks: { color: "#94a3b8" }, grid: { color: "rgba(148,163,184,0.08)" } } } });
+      createChart("dailyLossPipsChart", "bar", dailyLabels, "Daily Loss Pips", daily.map((x) => Number(x.lossPips.toFixed(1))), "#ef4444", { scales: { x: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(148,163,184,0.08)" } }, y: { beginAtZero: true, ticks: { color: "#94a3b8" }, grid: { color: "rgba(148,163,184,0.08)" } } } });
+      createChart("dailyPipsUsedChart", "line", dailyLabels, "Daily Pips Used", daily.map((x) => Number(x.pipsUsed.toFixed(1))), "#f59e0b");
+      createChart("pairPerformanceChart", "bar", pairAgg.map((x) => x[0]), "Pair Net P/L", pairAgg.map((x) => Number(x[1].toFixed(2))), "#38bdf8", { indexAxis: "y" });
+      createChart("setupPerformanceChart", "bar", setupAgg.map((x) => x[0]), "Setup Net P/L", setupAgg.map((x) => Number(x[1].toFixed(2))), "#a78bfa", { indexAxis: "y" });
+      createChart("sessionPerformanceChart", "bar", sessionAgg.map((x) => x[0]), "Session Net P/L", sessionAgg.map((x) => Number(x[1].toFixed(2))), "#22c55e", { indexAxis: "y" });
+      createChart("drawdownChart", "line", dates, "Drawdown", drawdown, "#ef4444");
+    }
+
+    function getSummaryStats(items) {
+      const totalTrades = items.length;
+      const wins = items.filter((t) => t.result === "Win").length;
+      const losses = items.filter((t) => t.result === "Loss").length;
+      const totalProfit = items.filter((t) => safeNumber(t.netPL) > 0).reduce((sum, t) => sum + safeNumber(t.netPL), 0);
+      const totalLoss = Math.abs(items.filter((t) => safeNumber(t.netPL) < 0).reduce((sum, t) => sum + safeNumber(t.netPL), 0));
+      const totalFees = items.reduce((sum, t) => sum + safeNumber(t.fees), 0);
+      const netProfitValue = items.reduce((sum, t) => sum + safeNumber(t.netPL), 0);
+      const netPips = items.reduce((sum, t) => sum + safeNumber(t.pips), 0);
+      const totalPipsUsed = items.reduce((sum, t) => sum + safeNumber(t.pipsUsed), 0);
+      const winRate = totalTrades ? (wins / totalTrades) * 100 : 0;
+      const avgWin = wins ? totalProfit / wins : 0;
+      const avgLoss = losses ? totalLoss / losses : 0;
+      const profitFactor = totalLoss ? totalProfit / totalLoss : totalProfit > 0 ? totalProfit : 0;
+      const expectancy = totalTrades ? netProfitValue / totalTrades : 0;
+      const ruleFollowedCount = items.filter((t) => t.followedRules === "Yes").length;
+      const ruleFollowPct = totalTrades ? (ruleFollowedCount / totalTrades) * 100 : 0;
+
+      const chronological = sortTradesAsc(items);
+      let running = 0;
+      let peak = 0;
+      let maxDrawdown = 0;
+      chronological.forEach((trade) => {
+        running += safeNumber(trade.netPL);
+        peak = Math.max(peak, running);
+        maxDrawdown = Math.max(maxDrawdown, peak - running);
+      });
+
+      const streakTrades = sortTradesDesc(items);
+      let streakValue = 0;
+      let streakLabel = "None";
+      if (streakTrades.length) {
+        const firstValid = streakTrades.find((t) => ["Win", "Loss"].includes(t.result));
+        if (firstValid) {
+          const target = firstValid.result;
+          streakLabel = target === "Win" ? "W" : "L";
+          for (const trade of streakTrades) {
+            if (trade.result === target) streakValue += 1;
+            else if (["Win", "Loss"].includes(trade.result)) break;
+          }
+        }
+      }
+
+      return {
+        totalTrades,
+        wins,
+        losses,
+        totalProfit,
+        totalLoss,
+        totalFees,
+        netProfitValue,
+        netPips,
+        totalPipsUsed,
+        winRate,
+        avgWin,
+        avgLoss,
+        profitFactor,
+        expectancy,
+        maxDrawdown,
+        streakLabel: streakValue ? `${streakLabel}${streakValue}` : "None",
+        ruleFollowPct
+      };
+    }
+
+    function statCard(title, value, className = "neutral", meta = "") {
+      return `
+        <div class="panel stat-card">
+          <h3>${title}</h3>
+          <div class="value ${className}">${value}</div>
+          ${meta ? `<div class="meta">${meta}</div>` : ""}
+        </div>
+      `;
+    }
+
+    function renderStats() {
+      const stats = getSummaryStats(trades);
+      statsGrid.innerHTML = [
+        statCard("Total Trades", stats.totalTrades),
+        statCard("Wins / Losses", `${stats.wins} / ${stats.losses}`),
+        statCard("Net Profit", formatMoney(stats.netProfitValue), stats.netProfitValue >= 0 ? "positive" : "negative"),
+        statCard("Total Profit", formatMoney(stats.totalProfit), "positive"),
+        statCard("Total Loss", formatMoney(stats.totalLoss), "negative"),
+        statCard("Fees / Commission", formatMoney(stats.totalFees), "warning"),
+        statCard("Net Pips", formatNum(stats.netPips, 1), stats.netPips >= 0 ? "positive" : "negative"),
+        statCard("Pips Used", formatNum(stats.totalPipsUsed, 1)),
+        statCard("Win Rate", `${stats.winRate.toFixed(1)}%`, "accent"),
+        statCard("Profit Factor", stats.profitFactor ? stats.profitFactor.toFixed(2) : "0.00", "accent"),
+        statCard("Expectancy / Trade", formatMoney(stats.expectancy), stats.expectancy >= 0 ? "positive" : "negative"),
+        statCard("Average Win", formatMoney(stats.avgWin), "positive"),
+        statCard("Average Loss", formatMoney(stats.avgLoss), "negative"),
+        statCard("Max Drawdown", formatMoney(stats.maxDrawdown), "negative"),
+        statCard("Current Streak", stats.streakLabel, "neutral"),
+        statCard("Followed Plan %", `${stats.ruleFollowPct.toFixed(1)}%`, stats.ruleFollowPct >= 70 ? "positive" : "warning")
+      ].join("");
+    }
+
+    function computeFieldPerformance(items, field) {
+      const map = {};
+      items.forEach((trade) => {
+        const key = trade[field] || "Unknown";
+        map[key] = (map[key] || 0) + safeNumber(trade.netPL);
+      });
+      const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
+      return {
+        best: entries[0] || ["-", 0],
+        worst: entries[entries.length - 1] || ["-", 0]
+      };
+    }
+
+    function mostCommonMistake(items) {
+      const map = {};
+      items.forEach((trade) => {
+        if (!trade.mistakeType) return;
+        map[trade.mistakeType] = (map[trade.mistakeType] || 0) + 1;
+      });
+      const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
+      return entries[0] || ["No mistake tagged", 0];
+    }
+
+    function renderInsights() {
+      const pairPerf = computeFieldPerformance(trades, "pair");
+      const setupPerf = computeFieldPerformance(trades, "setupType");
+      const mistake = mostCommonMistake(trades);
+      const badRules = trades.filter((t) => t.followedRules === "No").length;
+
+      insightsGrid.innerHTML = `
+        <div class="panel insight-card">
+          <h3>Best Pair</h3>
+          <div class="value positive">${escapeHTML(pairPerf.best[0])}</div>
+          <div class="meta">${formatMoney(pairPerf.best[1])}</div>
+        </div>
+        <div class="panel insight-card">
+          <h3>Worst Pair</h3>
+          <div class="value negative">${escapeHTML(pairPerf.worst[0])}</div>
+          <div class="meta">${formatMoney(pairPerf.worst[1])}</div>
+        </div>
+        <div class="panel insight-card">
+          <h3>Best Setup</h3>
+          <div class="value accent">${escapeHTML(setupPerf.best[0])}</div>
+          <div class="meta">${formatMoney(setupPerf.best[1])}</div>
+        </div>
+        <div class="panel insight-card">
+          <h3>Most Common Mistake</h3>
+          <div class="value warning">${escapeHTML(mistake[0])}</div>
+          <div class="meta">${mistake[1]} trade(s) • Rule breaks: ${badRules}</div>
+        </div>
+      `;
+    }
+
+    function getStartOfWeek(dateObj) {
+      const current = new Date(dateObj);
+      const day = current.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      current.setDate(current.getDate() + diff);
+      current.setHours(0, 0, 0, 0);
+      return current;
+    }
+
+    function getEndOfWeek(dateObj) {
+      const start = getStartOfWeek(dateObj);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+      return end;
+    }
+
+    function getPeriodTrades(referenceDateStr) {
+      const reference = new Date(`${referenceDateStr}T12:00:00`);
+      const startWeek = getStartOfWeek(reference);
+      const endWeek = getEndOfWeek(reference);
+      const month = `${reference.getFullYear()}-${String(reference.getMonth() + 1).padStart(2, "0")}`;
+
+      const dayTrades = trades.filter((t) => t.date === referenceDateStr);
+      const weekTrades = trades.filter((t) => {
+        const d = new Date(`${t.date}T12:00:00`);
+        return d >= startWeek && d <= endWeek;
+      });
+      const monthTrades = trades.filter((t) => (t.date || "").slice(0, 7) === month);
+      return { dayTrades, weekTrades, monthTrades };
+    }
+
+    function renderPeriodGrid() {
+      const currentDate = periodDate.value || new Date().toISOString().split("T")[0];
+      const { dayTrades, weekTrades, monthTrades } = getPeriodTrades(currentDate);
+
+      const dayStats = getSummaryStats(dayTrades);
+      const weekStats = getSummaryStats(weekTrades);
+      const monthStats = getSummaryStats(monthTrades);
+
+      const positivePips = (list) => list.filter((t) => safeNumber(t.pips) > 0).reduce((sum, t) => sum + safeNumber(t.pips), 0);
+      const lossPips = (list) => list.filter((t) => safeNumber(t.pips) < 0).reduce((sum, t) => sum + Math.abs(safeNumber(t.pips)), 0);
+
+      periodGrid.innerHTML = `
+        <div class="panel mini-card">
+          <h3>Selected Day</h3>
+          <div class="value ${dayStats.netProfitValue >= 0 ? "positive" : "negative"}">${formatMoney(dayStats.netProfitValue)}</div>
+          <div class="meta">Trades: ${dayStats.totalTrades} • +Pips: ${formatNum(positivePips(dayTrades), 1)} • -Pips: ${formatNum(lossPips(dayTrades), 1)}</div>
+        </div>
+        <div class="panel mini-card">
+          <h3>Selected Week</h3>
+          <div class="value ${weekStats.netProfitValue >= 0 ? "positive" : "negative"}">${formatMoney(weekStats.netProfitValue)}</div>
+          <div class="meta">Trades: ${weekStats.totalTrades} • Win rate: ${weekStats.winRate.toFixed(1)}% • Pips: ${formatNum(weekStats.netPips, 1)}</div>
+        </div>
+        <div class="panel mini-card">
+          <h3>Selected Month</h3>
+          <div class="value ${monthStats.netProfitValue >= 0 ? "positive" : "negative"}">${formatMoney(monthStats.netProfitValue)}</div>
+          <div class="meta">Trades: ${monthStats.totalTrades} • Fees: ${formatMoney(monthStats.totalFees)} • Pips: ${formatNum(monthStats.netPips, 1)}</div>
+        </div>
+      `;
+    }
+
+    function getFilteredTrades() {
+      const search = searchInput.value.trim().toLowerCase();
+      const resultValue = filterResult.value;
+      const sessionValue = filterSession.value;
+      const rulesValue = filterRules.value;
+      const pairValue = filterPair.value.trim().toLowerCase();
+      const setupValue = filterSetup.value.trim().toLowerCase();
+      const mistakeValue = filterMistake.value.trim().toLowerCase();
+      const fromDate = filterFromDate.value;
+      const toDate = filterToDate.value;
+
+      return sortTradesDesc(trades).filter((trade) => {
+        const haystack = [
+          trade.date,
+          trade.pair,
+          trade.direction,
+          trade.setupType,
+          trade.session,
+          trade.result,
+          trade.notes,
+          trade.mistakeType,
+          trade.emotionBefore,
+          trade.emotionAfter
+        ].join(" ").toLowerCase();
+
+        if (search && !haystack.includes(search)) return false;
+        if (resultValue && trade.result !== resultValue) return false;
+        if (sessionValue && trade.session !== sessionValue) return false;
+        if (rulesValue && trade.followedRules !== rulesValue) return false;
+        if (pairValue && !(trade.pair || "").toLowerCase().includes(pairValue)) return false;
+        if (setupValue && !(trade.setupType || "").toLowerCase().includes(setupValue)) return false;
+        if (mistakeValue && !(trade.mistakeType || "").toLowerCase().includes(mistakeValue)) return false;
+        if (fromDate && (trade.date || "") < fromDate) return false;
+        if (toDate && (trade.date || "") > toDate) return false;
+        return true;
+      });
+    }
+
+    function renderTable() {
+      const items = getFilteredTrades();
+      if (!items.length) {
+        tradeTableBody.innerHTML = `<tr><td colspan="21" class="empty">No trades found for the current filters.</td></tr>`;
+        return;
+      }
+
+      tradeTableBody.innerHTML = items.map((trade) => `
+        <tr>
+          <td>${escapeHTML(trade.date || "-")}</td>
+          <td>${escapeHTML(trade.entryTime || "-")}</td>
+          <td>${escapeHTML(trade.exitTime || "-")}</td>
+          <td>${escapeHTML(formatDuration(trade.tradeDurationMinutes || 0))}</td>
+          <td>${escapeHTML(trade.pair || "-")}</td>
+          <td>${escapeHTML(trade.direction || "-")}</td>
+          <td>${escapeHTML(trade.setupType || "-")}</td>
+          <td>${escapeHTML(trade.session || "-")}</td>
+          <td class="${safeNumber(trade.grossPL) >= 0 ? "positive" : "negative"}">${formatMoney(trade.grossPL)}</td>
+          <td class="warning">${formatMoney(trade.fees)}</td>
+          <td class="${safeNumber(trade.netPL) >= 0 ? "positive" : "negative"}">${formatMoney(trade.netPL)}<br>${resultTag(trade.result)}</td>
+          <td class="${safeNumber(trade.pips) >= 0 ? "positive" : "negative"}">${formatNum(trade.pips, 1)}</td>
+          <td>${formatNum(trade.pipsUsed, 1)}</td>
+          <td>${trade.plannedRR ?? "-"}</td>
+          <td>${trade.actualRR ?? "-"}</td>
+          <td>${rulesTag(trade.followedRules || "No")}</td>
+          <td>${escapeHTML(trade.mistakeType || "-")}</td>
+          <td>${escapeHTML([trade.emotionBefore, trade.emotionAfter].filter(Boolean).join(" → ") || "-")}</td>
+          <td>${trade.accountBalanceAfter != null ? formatMoney(trade.accountBalanceAfter) : "-"}</td>
+          <td>${escapeHTML(trade.notes || "-")}</td>
+          <td>
+            <div class="table-actions">
+              <button class="btn-muted small-btn" type="button" data-action="edit" data-id="${trade.id}">Edit</button>
+              <button class="btn-danger small-btn" type="button" data-action="delete" data-id="${trade.id}">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function fillForm(trade) {
+      editingId = trade.id;
+      tradeDate.value = trade.date || "";
+      entryTime.value = trade.entryTime || "";
+      exitTime.value = trade.exitTime || "";
+      pair.value = trade.pair || "";
+      direction.value = trade.direction || "Buy";
+      setupType.value = trade.setupType || "";
+      session.value = trade.session || "";
+      entryPrice.value = trade.entryPrice ?? "";
+      exitPrice.value = trade.exitPrice ?? "";
+      stopLoss.value = trade.stopLoss ?? "";
+      takeProfit.value = trade.takeProfit ?? "";
+      lotSize.value = trade.lotSize ?? "";
+      riskPercent.value = trade.riskPercent ?? "";
+      grossPL.value = trade.grossPL ?? 0;
+      fees.value = trade.fees ?? 0;
+      pips.value = trade.pips ?? 0;
+      pipsUsed.value = trade.pipsUsed ?? 0;
+      plannedRR.value = trade.plannedRR ?? "";
+      actualRR.value = trade.actualRR ?? "";
+      result.value = trade.result || "Win";
+      followedRules.value = trade.followedRules || "Yes";
+      mistakeType.value = trade.mistakeType || "";
+      emotionBefore.value = trade.emotionBefore || "";
+      emotionAfter.value = trade.emotionAfter || "";
+      accountBalanceAfter.value = trade.accountBalanceAfter ?? "";
+      notes.value = trade.notes || "";
+      updateDurationPreview();
+      updateNetPreview();
+      formHeading.textContent = "Edit Trade";
+      saveTradeBtn.textContent = "Update Trade";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    async function saveTrade(event) {
+      event.preventDefault();
+      const user = auth.currentUser;
+      if (!user) {
+        setStatus("Please log in first.", "error");
+        return;
+      }
+
+      const payload = getFormTrade();
+      if (!payload.date || !payload.pair) {
+        setStatus("Trade date and pair are required.", "error");
+        return;
+      }
+
+      try {
+        if (editingId) {
+          const existing = trades.find((t) => t.id === editingId);
+          await updateDoc(doc(db, "users", user.uid, "trades", editingId), {
+            ...payload,
+            createdAt: existing?.createdAt || Date.now()
+          });
+          setStatus("Trade updated.", "success");
+        } else {
+          await addDoc(getUserTradesCollection(user.uid), {
+            ...payload,
+            createdAt: Date.now()
+          });
+          setStatus("Trade saved.", "success");
+        }
+        resetForm();
+      } catch (error) {
+        setStatus(error.message, "error");
+      }
+    }
+
+    async function deleteTradeById(id) {
+      const user = auth.currentUser;
+      if (!user) return;
+      const okay = confirm("Delete this trade?");
+      if (!okay) return;
+      try {
+        await deleteDoc(doc(db, "users", user.uid, "trades", id));
+        setStatus("Trade deleted.", "success");
+        if (editingId === id) resetForm();
+      } catch (error) {
+        setStatus(error.message, "error");
+      }
+    }
+
+    function renderAll() {
+      renderStats();
+      renderInsights();
+      renderPeriodGrid();
+      renderCharts();
+      renderTable();
+    }
+
+    loginBtn.addEventListener("click", login);
+    signupBtn.addEventListener("click", createAccount);
+    logoutBtn.addEventListener("click", logout);
+    tradeForm.addEventListener("submit", saveTrade);
+    resetFormBtn.addEventListener("click", resetForm);
+
+    [tradeDate, entryTime, exitTime].forEach((input) => input.addEventListener("input", updateDurationPreview));
+    [grossPL, fees].forEach((input) => input.addEventListener("input", updateNetPreview));
+
+    [searchInput, filterResult, filterSession, filterRules, filterPair, filterSetup, filterMistake, filterFromDate, filterToDate].forEach((input) => {
+      input.addEventListener("input", renderTable);
+      input.addEventListener("change", renderTable);
+    });
+
+    clearFiltersBtn.addEventListener("click", () => {
+      searchInput.value = "";
+      filterResult.value = "";
+      filterSession.value = "";
+      filterRules.value = "";
+      filterPair.value = "";
+      filterSetup.value = "";
+      filterMistake.value = "";
+      filterFromDate.value = "";
+      filterToDate.value = "";
+      renderTable();
+    });
+
+    chartRange.addEventListener("change", renderCharts);
+    periodDate.addEventListener("change", renderPeriodGrid);
+
+    tradeTableBody.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-action]");
+      if (!button) return;
+      const { action, id } = button.dataset;
+      const trade = trades.find((item) => item.id === id);
+      if (action === "edit" && trade) fillForm(trade);
+      if (action === "delete" && id) deleteTradeById(id);
+    });
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        authPanel.classList.add("hidden");
+        appShell.classList.remove("hidden");
+        logoutBtn.classList.remove("hidden");
+        userPill.classList.remove("hidden");
+        userPill.textContent = `Logged in: ${user.email}`;
+        mountTradeSubscription(user);
+      } else {
+        authPanel.classList.remove("hidden");
+        appShell.classList.add("hidden");
+        logoutBtn.classList.add("hidden");
+        userPill.classList.add("hidden");
+        userPill.textContent = "";
+        if (unsubscribeTrades) unsubscribeTrades();
+        unsubscribeTrades = null;
+        trades = [];
+        clearCharts();
+        resetForm();
+      }
+    });
+
+    updateDurationPreview();
+    updateNetPreview();
+  </script>
+</body>
+</html>
