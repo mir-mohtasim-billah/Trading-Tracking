@@ -6,6 +6,14 @@
   <title>Trading Performance Tracker</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
  <style>
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trading Performance Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+ <style>
     :root {
       --bg: #020617;
       --panel: rgba(15, 23, 42, 0.92);
@@ -424,6 +432,13 @@
         <p>Cross-device trading journal with Firebase login, cloud sync, analytics, charts, filters, and trade review tracking.</p>
       </div>
       <div class="toolbar">
+        <button class="btn-ghost hidden" id="themeToggleBtn" type="button">Light Mode</button>
+        <button class="btn-ghost hidden" id="exportCsvBtn" type="button">Export CSV</button>
+        <button class="btn-ghost hidden" id="exportJsonBtn" type="button">Backup JSON</button>
+        <label class="btn-ghost hidden" id="importJsonLabel" style="cursor:pointer;">
+          Restore JSON
+          <input type="file" id="importJsonInput" accept=".json,application/json" hidden>
+        </label>
         <div class="user-pill hidden" id="userPill"></div>
         <button class="btn-danger hidden" id="logoutBtn" type="button">Log Out</button>
       </div>
@@ -467,6 +482,23 @@
           </div>
         </div>
         <div class="insights-grid" id="insightsGrid"></div>
+        <div class="insights-grid" id="disciplineGrid" style="margin-top:14px;"></div>
+        <div class="insights-grid" id="monthlyReportGrid" style="margin-top:14px;"></div>
+      </div>
+
+      <div class="panel section-panel" style="margin-bottom: 20px;">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Account growth & behaviour</h2>
+            <p class="section-subtitle">Balance growth, weekday/month performance, and discipline analysis.</p>
+          </div>
+        </div>
+        <div class="charts-grid">
+          <div class="panel chart-card"><h3>Account Balance Growth</h3><div class="chart-box"><canvas id="accountGrowthChart"></canvas></div></div>
+          <div class="panel chart-card"><h3>Balance Drawdown</h3><div class="chart-box"><canvas id="balanceDrawdownChart"></canvas></div></div>
+          <div class="panel chart-card"><h3>Weekday Performance</h3><div class="chart-box"><canvas id="weekdayPerformanceChart"></canvas></div></div>
+          <div class="panel chart-card"><h3>Monthly Performance</h3><div class="chart-box"><canvas id="monthlyPerformanceChart"></canvas></div></div>
+        </div>
       </div>
 
       <div class="panel section-panel" style="margin-bottom: 20px;">
@@ -750,6 +782,43 @@
                 <input type="text" id="filterMistake" placeholder="Emotional trade" />
               </div>
               <div class="field">
+                <label for="filterMonth">Month</label>
+                <input type="month" id="filterMonth" />
+              </div>
+              <div class="field">
+                <label for="filterWeekday">Weekday</label>
+                <select id="filterWeekday">
+                  <option value="">All</option>
+                  <option value="0">Sunday</option>
+                  <option value="1">Monday</option>
+                  <option value="2">Tuesday</option>
+                  <option value="3">Wednesday</option>
+                  <option value="4">Thursday</option>
+                  <option value="5">Friday</option>
+                  <option value="6">Saturday</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="filterEmotion">Emotion</label>
+                <input type="text" id="filterEmotion" placeholder="Calm / Fearful" />
+              </div>
+              <div class="field">
+                <label for="filterMinProfit">Min Profit</label>
+                <input type="number" id="filterMinProfit" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="filterMaxProfit">Max Profit</label>
+                <input type="number" id="filterMaxProfit" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="filterMinPips">Min Pips</label>
+                <input type="number" id="filterMinPips" step="0.1" />
+              </div>
+              <div class="field">
+                <label for="filterMaxPips">Max Pips</label>
+                <input type="number" id="filterMaxPips" step="0.1" />
+              </div>
+              <div class="field">
                 <label for="filterFromDate">From Date</label>
                 <input type="date" id="filterFromDate" />
               </div>
@@ -801,6 +870,9 @@
                 <tbody id="tradeTableBody"></tbody>
               </table>
             </div>
+            
+            <div class="trade-cards" id="tradeCardsContainer"></div>
+
             <div class="footer-note">When hosted on GitHub Pages, add your GitHub Pages domain to Firebase Authentication authorised domains before logging in there.</div>
           </div>
         </div>
@@ -809,25 +881,25 @@
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import {
-      getAuth,
-      createUserWithEmailAndPassword,
-      signInWithEmailAndPassword,
-      onAuthStateChanged,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import {
-      getFirestore,
-      collection,
-      addDoc,
-      doc,
-      updateDoc,
-      deleteDoc,
-      onSnapshot
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    onAuthStateChanged,
+    signOut
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore,
+    collection,
+    addDoc,
+    doc,
+    updateDoc,
+    deleteDoc,
+    onSnapshot
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    const firebaseConfig = {
+  const firebaseConfig = {
   apiKey: "AIzaSyBi3-mPivjOHd6mnPNc8ZTTZlt_TQZUiB8",
   authDomain: "trading-statistics-tracking.firebaseapp.com",
   projectId: "trading-statistics-tracking",
@@ -837,815 +909,1156 @@
   measurementId: "G-CHVF595L0E"
 };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
 
-    const $ = (id) => document.getElementById(id);
+  const $ = (id) => document.getElementById(id);
 
-    const authPanel = $("authPanel");
-    const appShell = $("appShell");
-    const userPill = $("userPill");
-    const authStatus = $("authStatus");
-    const loginBtn = $("loginBtn");
-    const signupBtn = $("signupBtn");
-    const logoutBtn = $("logoutBtn");
-    const authEmail = $("authEmail");
-    const authPassword = $("authPassword");
+  const authPanel = $("authPanel");
+  const appShell = $("appShell");
+  const userPill = $("userPill");
+  const authStatus = $("authStatus");
+  const loginBtn = $("loginBtn");
+  const signupBtn = $("signupBtn");
+  const logoutBtn = $("logoutBtn");
+  const authEmail = $("authEmail");
+  const authPassword = $("authPassword");
 
-    const tradeForm = $("tradeForm");
-    const tradeDate = $("tradeDate");
-    const entryTime = $("entryTime");
-    const exitTime = $("exitTime");
-    const tradeDuration = $("tradeDuration");
-    const pair = $("pair");
-    const direction = $("direction");
-    const setupType = $("setupType");
-    const session = $("session");
-    const entryPrice = $("entryPrice");
-    const exitPrice = $("exitPrice");
-    const stopLoss = $("stopLoss");
-    const takeProfit = $("takeProfit");
-    const lotSize = $("lotSize");
-    const riskPercent = $("riskPercent");
-    const grossPL = $("grossPL");
-    const fees = $("fees");
-    const netPL = $("netPL");
-    const pips = $("pips");
-    const pipsUsed = $("pipsUsed");
-    const plannedRR = $("plannedRR");
-    const actualRR = $("actualRR");
-    const result = $("result");
-    const followedRules = $("followedRules");
-    const mistakeType = $("mistakeType");
-    const emotionBefore = $("emotionBefore");
-    const emotionAfter = $("emotionAfter");
-    const accountBalanceAfter = $("accountBalanceAfter");
-    const notes = $("notes");
-    const saveTradeBtn = $("saveTradeBtn");
-    const resetFormBtn = $("resetFormBtn");
-    const formHeading = $("formHeading");
+  const themeToggleBtn = $("themeToggleBtn");
+  const exportCsvBtn = $("exportCsvBtn");
+  const exportJsonBtn = $("exportJsonBtn");
+  const importJsonInput = $("importJsonInput");
+  const importJsonLabel = $("importJsonLabel");
 
-    const searchInput = $("searchInput");
-    const filterResult = $("filterResult");
-    const filterSession = $("filterSession");
-    const filterRules = $("filterRules");
-    const filterPair = $("filterPair");
-    const filterSetup = $("filterSetup");
-    const filterMistake = $("filterMistake");
-    const filterFromDate = $("filterFromDate");
-    const filterToDate = $("filterToDate");
-    const clearFiltersBtn = $("clearFiltersBtn");
+  const tradeForm = $("tradeForm");
+  const tradeDate = $("tradeDate");
+  const entryTime = $("entryTime");
+  const exitTime = $("exitTime");
+  const tradeDuration = $("tradeDuration");
+  const pair = $("pair");
+  const direction = $("direction");
+  const setupType = $("setupType");
+  const session = $("session");
+  const entryPrice = $("entryPrice");
+  const exitPrice = $("exitPrice");
+  const stopLoss = $("stopLoss");
+  const takeProfit = $("takeProfit");
+  const lotSize = $("lotSize");
+  const riskPercent = $("riskPercent");
+  const grossPL = $("grossPL");
+  const fees = $("fees");
+  const netPL = $("netPL");
+  const pips = $("pips");
+  const pipsUsed = $("pipsUsed");
+  const plannedRR = $("plannedRR");
+  const actualRR = $("actualRR");
+  const result = $("result");
+  const followedRules = $("followedRules");
+  const mistakeType = $("mistakeType");
+  const emotionBefore = $("emotionBefore");
+  const emotionAfter = $("emotionAfter");
+  const accountBalanceAfter = $("accountBalanceAfter");
+  const notes = $("notes");
+  const saveTradeBtn = $("saveTradeBtn");
+  const resetFormBtn = $("resetFormBtn");
+  const formHeading = $("formHeading");
 
-    const chartRange = $("chartRange");
-    const statsGrid = $("statsGrid");
-    const insightsGrid = $("insightsGrid");
-    const periodGrid = $("periodGrid");
-    const tradeTableBody = $("tradeTableBody");
-    const periodDate = $("periodDate");
+  const searchInput = $("searchInput");
+  const filterResult = $("filterResult");
+  const filterSession = $("filterSession");
+  const filterRules = $("filterRules");
+  const filterPair = $("filterPair");
+  const filterSetup = $("filterSetup");
+  const filterMistake = $("filterMistake");
+  const filterFromDate = $("filterFromDate");
+  const filterToDate = $("filterToDate");
+  const filterMonth = $("filterMonth");
+  const filterWeekday = $("filterWeekday");
+  const filterEmotion = $("filterEmotion");
+  const filterMinProfit = $("filterMinProfit");
+  const filterMaxProfit = $("filterMaxProfit");
+  const filterMinPips = $("filterMinPips");
+  const filterMaxPips = $("filterMaxPips");
+  const clearFiltersBtn = $("clearFiltersBtn");
 
+  const chartRange = $("chartRange");
+  const statsGrid = $("statsGrid");
+  const insightsGrid = $("insightsGrid");
+  const disciplineGrid = $("disciplineGrid");
+  const monthlyReportGrid = $("monthlyReportGrid");
+  const periodGrid = $("periodGrid");
+  const tradeTableBody = $("tradeTableBody");
+  const tradeCardsContainer = $("tradeCardsContainer");
+  const periodDate = $("periodDate");
+
+  tradeDate.value = new Date().toISOString().split("T")[0];
+  periodDate.value = tradeDate.value;
+
+  let trades = [];
+  let editingId = null;
+  let unsubscribeTrades = null;
+  const chartInstances = {};
+
+  function setStatus(message, type = "") {
+    authStatus.textContent = message;
+    authStatus.className = `status ${type}`.trim();
+  }
+
+  function safeNumber(value) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function optionalNumber(value) {
+    if (value === "" || value === null || value === undefined) return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function formatMoney(value) {
+    return `$${safeNumber(value).toFixed(2)}`;
+  }
+
+  function formatNum(value, digits = 1) {
+    return safeNumber(value).toFixed(digits);
+  }
+
+  function escapeHTML(value = "") {
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function resultTag(value) {
+    if (value === "Win") return '<span class="tag tag-win">Win</span>';
+    if (value === "Loss") return '<span class="tag tag-loss">Loss</span>';
+    return '<span class="tag tag-be">Break-even</span>';
+  }
+
+  function rulesTag(value) {
+    return value === "Yes"
+      ? '<span class="tag tag-yes">Yes</span>'
+      : '<span class="tag tag-no">No</span>';
+  }
+
+  function durationMinutesFromInputs(dateValue, entryValue, exitValue) {
+    if (!dateValue || !entryValue || !exitValue) return 0;
+    const entryDate = new Date(`${dateValue}T${entryValue}`);
+    let exitDate = new Date(`${dateValue}T${exitValue}`);
+    let diff = (exitDate - entryDate) / 60000;
+    if (diff < 0) diff += 24 * 60;
+    return Math.max(0, Math.round(diff));
+  }
+
+  function formatDuration(minutes) {
+    const total = Math.round(safeNumber(minutes));
+    if (!total) return "0m";
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    if (!h) return `${m}m`;
+    return `${h}h ${m}m`;
+  }
+
+  function updateDurationPreview() {
+    const mins = durationMinutesFromInputs(tradeDate.value, entryTime.value, exitTime.value);
+    tradeDuration.value = mins ? formatDuration(mins) : "";
+  }
+
+  function updateNetPreview() {
+    const value = safeNumber(grossPL.value) - safeNumber(fees.value);
+    netPL.value = Number.isFinite(value) ? value.toFixed(2) : "0.00";
+  }
+
+  function resetForm() {
+    editingId = null;
+    tradeForm.reset();
     tradeDate.value = new Date().toISOString().split("T")[0];
-    periodDate.value = tradeDate.value;
+    direction.value = "Buy";
+    result.value = "Win";
+    followedRules.value = "Yes";
+    fees.value = 0;
+    tradeDuration.value = "";
+    netPL.value = "0.00";
+    formHeading.textContent = "Add Trade";
+    saveTradeBtn.textContent = "Save Trade";
+  }
 
-    let trades = [];
-    let editingId = null;
-    let unsubscribeTrades = null;
-    const chartInstances = {};
+  function getUserTradesCollection(uid) {
+    return collection(db, "users", uid, "trades");
+  }
 
-    function setStatus(message, type = "") {
-      authStatus.textContent = message;
-      authStatus.className = `status ${type}`.trim();
+  function sortTradesDesc(items) {
+    return [...items].sort((a, b) => {
+      const aKey = `${a.date || ""}_${String(a.createdAt || 0).padStart(15, "0")}`;
+      const bKey = `${b.date || ""}_${String(b.createdAt || 0).padStart(15, "0")}`;
+      return bKey.localeCompare(aKey);
+    });
+  }
+
+  function sortTradesAsc(items) {
+    return [...items].sort((a, b) => {
+      const aKey = `${a.date || ""}_${String(a.createdAt || 0).padStart(15, "0")}`;
+      const bKey = `${b.date || ""}_${String(b.createdAt || 0).padStart(15, "0")}`;
+      return aKey.localeCompare(bKey);
+    });
+  }
+
+  function downloadFile(filename, content, type) {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportTradesToCSV() {
+    if (!trades.length) {
+      setStatus("No trades to export.", "error");
+      return;
     }
 
-    function safeNumber(value) {
-      const parsed = Number(value);
-      return Number.isFinite(parsed) ? parsed : 0;
+    const headers = [
+      "date","entryTime","exitTime","tradeDurationMinutes","pair","direction","setupType","session",
+      "entryPrice","exitPrice","stopLoss","takeProfit","lotSize","riskPercent",
+      "grossPL","fees","netPL","pips","pipsUsed","plannedRR","actualRR","result",
+      "followedRules","mistakeType","emotionBefore","emotionAfter","accountBalanceAfter","notes"
+    ];
+
+    const rows = trades.map(trade =>
+      headers.map(key => {
+        const value = trade[key] ?? "";
+        return `"${String(value).replace(/"/g, '""')}"`;
+      }).join(",")
+    );
+
+    downloadFile(
+      `trading-trades-${new Date().toISOString().slice(0,10)}.csv`,
+      [headers.join(","), ...rows].join("\n"),
+      "text/csv;charset=utf-8;"
+    );
+
+    setStatus("CSV exported.", "success");
+  }
+
+  function exportTradesToJSON() {
+    if (!trades.length) {
+      setStatus("No trades to export.", "error");
+      return;
     }
 
-    function optionalNumber(value) {
-      if (value === "" || value === null || value === undefined) return null;
-      const parsed = Number(value);
-      return Number.isFinite(parsed) ? parsed : null;
-    }
+    downloadFile(
+      `trading-backup-${new Date().toISOString().slice(0,10)}.json`,
+      JSON.stringify(trades, null, 2),
+      "application/json"
+    );
 
-    function formatMoney(value) {
-      return `$${safeNumber(value).toFixed(2)}`;
-    }
+    setStatus("JSON backup exported.", "success");
+  }
 
-    function formatNum(value, digits = 1) {
-      return safeNumber(value).toFixed(digits);
-    }
+  async function importTradesFromJSON(file) {
+    const user = auth.currentUser;
+    if (!user || !file) return;
 
-    function escapeHTML(value = "") {
-      return String(value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/\"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    }
+    try {
+      const text = await file.text();
+      const items = JSON.parse(text);
 
-    function resultTag(value) {
-      if (value === "Win") return '<span class="tag tag-win">Win</span>';
-      if (value === "Loss") return '<span class="tag tag-loss">Loss</span>';
-      return '<span class="tag tag-be">Break-even</span>';
-    }
-
-    function rulesTag(value) {
-      return value === "Yes"
-        ? '<span class="tag tag-yes">Yes</span>'
-        : '<span class="tag tag-no">No</span>';
-    }
-
-    function durationMinutesFromInputs(dateValue, entryValue, exitValue) {
-      if (!dateValue || !entryValue || !exitValue) return 0;
-      const entryDate = new Date(`${dateValue}T${entryValue}`);
-      let exitDate = new Date(`${dateValue}T${exitValue}`);
-      let diff = (exitDate - entryDate) / 60000;
-      if (diff < 0) diff += 24 * 60;
-      return Math.max(0, Math.round(diff));
-    }
-
-    function formatDuration(minutes) {
-      const total = safeNumber(minutes);
-      if (!total) return "0m";
-      const h = Math.floor(total / 60);
-      const m = total % 60;
-      if (!h) return `${m}m`;
-      return `${h}h ${m}m`;
-    }
-
-    function updateDurationPreview() {
-      const mins = durationMinutesFromInputs(tradeDate.value, entryTime.value, exitTime.value);
-      tradeDuration.value = mins ? formatDuration(mins) : "";
-    }
-
-    function updateNetPreview() {
-      const value = safeNumber(grossPL.value) - safeNumber(fees.value);
-      netPL.value = Number.isFinite(value) ? value.toFixed(2) : "0.00";
-    }
-
-    function resetForm() {
-      editingId = null;
-      tradeForm.reset();
-      tradeDate.value = new Date().toISOString().split("T")[0];
-      periodDate.value = periodDate.value || tradeDate.value;
-      direction.value = "Buy";
-      result.value = "Win";
-      followedRules.value = "Yes";
-      fees.value = 0;
-      tradeDuration.value = "";
-      netPL.value = "0.00";
-      formHeading.textContent = "Add Trade";
-      saveTradeBtn.textContent = "Save Trade";
-    }
-
-    function getUserTradesCollection(uid) {
-      return collection(db, "users", uid, "trades");
-    }
-
-    function sortTradesDesc(items) {
-      return [...items].sort((a, b) => {
-        const aKey = `${a.date || ""}_${String(a.createdAt || 0).padStart(15, "0")}`;
-        const bKey = `${b.date || ""}_${String(b.createdAt || 0).padStart(15, "0")}`;
-        return bKey.localeCompare(aKey);
-      });
-    }
-
-    function sortTradesAsc(items) {
-      return [...items].sort((a, b) => {
-        const aKey = `${a.date || ""}_${String(a.createdAt || 0).padStart(15, "0")}`;
-        const bKey = `${b.date || ""}_${String(b.createdAt || 0).padStart(15, "0")}`;
-        return aKey.localeCompare(bKey);
-      });
-    }
-
-    function getFormTrade() {
-      const durationMins = durationMinutesFromInputs(tradeDate.value, entryTime.value, exitTime.value);
-      const gross = safeNumber(grossPL.value);
-      const feeValue = safeNumber(fees.value);
-      return {
-        date: tradeDate.value,
-        entryTime: entryTime.value || "",
-        exitTime: exitTime.value || "",
-        tradeDurationMinutes: durationMins,
-        pair: pair.value.trim().toUpperCase(),
-        direction: direction.value,
-        setupType: setupType.value.trim(),
-        session: session.value,
-        entryPrice: optionalNumber(entryPrice.value),
-        exitPrice: optionalNumber(exitPrice.value),
-        stopLoss: optionalNumber(stopLoss.value),
-        takeProfit: optionalNumber(takeProfit.value),
-        lotSize: optionalNumber(lotSize.value),
-        riskPercent: optionalNumber(riskPercent.value),
-        grossPL: gross,
-        fees: feeValue,
-        netPL: Number((gross - feeValue).toFixed(2)),
-        pips: safeNumber(pips.value),
-        pipsUsed: safeNumber(pipsUsed.value),
-        plannedRR: optionalNumber(plannedRR.value),
-        actualRR: optionalNumber(actualRR.value),
-        result: result.value,
-        followedRules: followedRules.value,
-        mistakeType: mistakeType.value,
-        emotionBefore: emotionBefore.value.trim(),
-        emotionAfter: emotionAfter.value.trim(),
-        accountBalanceAfter: optionalNumber(accountBalanceAfter.value),
-        notes: notes.value.trim(),
-        updatedAt: Date.now()
-      };
-    }
-
-    async function createAccount() {
-      try {
-        const email = authEmail.value.trim();
-        const password = authPassword.value.trim();
-        if (!email || !password) {
-          setStatus("Enter email and password first.", "error");
-          return;
-        }
-        await createUserWithEmailAndPassword(auth, email, password);
-        setStatus("Account created. You are now logged in.", "success");
-      } catch (error) {
-        setStatus(error.message, "error");
+      if (!Array.isArray(items)) {
+        setStatus("Invalid JSON file.", "error");
+        return;
       }
-    }
 
-    async function login() {
-      try {
-        const email = authEmail.value.trim();
-        const password = authPassword.value.trim();
-        if (!email || !password) {
-          setStatus("Enter email and password first.", "error");
-          return;
-        }
-        await signInWithEmailAndPassword(auth, email, password);
-        setStatus("Logged in successfully.", "success");
-      } catch (error) {
-        setStatus(error.message, "error");
+      for (const item of items) {
+        const { id, ...payload } = item;
+        await addDoc(getUserTradesCollection(user.uid), {
+          ...payload,
+          createdAt: payload.createdAt || Date.now(),
+          updatedAt: Date.now()
+        });
       }
-    }
 
-    async function logout() {
-      try {
-        await signOut(auth);
-        setStatus("Logged out.", "success");
-      } catch (error) {
-        setStatus(error.message, "error");
+      importJsonInput.value = "";
+      setStatus("JSON restore complete.", "success");
+    } catch (error) {
+      setStatus(`Restore failed: ${error.message}`, "error");
+    }
+  }
+
+  function applyTheme(mode) {
+    document.body.classList.toggle("light-mode", mode === "light");
+    localStorage.setItem("tradingTheme", mode);
+    if (themeToggleBtn) {
+      themeToggleBtn.textContent = mode === "light" ? "Dark Mode" : "Light Mode";
+    }
+  }
+
+  function toggleTheme() {
+    const isLight = document.body.classList.contains("light-mode");
+    applyTheme(isLight ? "dark" : "light");
+  }
+
+  function getWeekdayNumber(dateStr) {
+    return new Date(`${dateStr}T12:00:00`).getDay();
+  }
+
+  function getFormTrade() {
+    const durationMins = durationMinutesFromInputs(tradeDate.value, entryTime.value, exitTime.value);
+    const gross = safeNumber(grossPL.value);
+    const feeValue = safeNumber(fees.value);
+
+    return {
+      date: tradeDate.value,
+      entryTime: entryTime.value || "",
+      exitTime: exitTime.value || "",
+      tradeDurationMinutes: durationMins,
+      pair: pair.value.trim().toUpperCase(),
+      direction: direction.value,
+      setupType: setupType.value.trim(),
+      session: session.value,
+      entryPrice: optionalNumber(entryPrice.value),
+      exitPrice: optionalNumber(exitPrice.value),
+      stopLoss: optionalNumber(stopLoss.value),
+      takeProfit: optionalNumber(takeProfit.value),
+      lotSize: optionalNumber(lotSize.value),
+      riskPercent: optionalNumber(riskPercent.value),
+      grossPL: gross,
+      fees: feeValue,
+      netPL: Number((gross - feeValue).toFixed(2)),
+      pips: safeNumber(pips.value),
+      pipsUsed: safeNumber(pipsUsed.value),
+      plannedRR: optionalNumber(plannedRR.value),
+      actualRR: optionalNumber(actualRR.value),
+      result: result.value,
+      followedRules: followedRules.value,
+      mistakeType: mistakeType.value,
+      emotionBefore: emotionBefore.value.trim(),
+      emotionAfter: emotionAfter.value.trim(),
+      accountBalanceAfter: optionalNumber(accountBalanceAfter.value),
+      notes: notes.value.trim(),
+      updatedAt: Date.now()
+    };
+  }
+
+  async function createAccount() {
+    try {
+      const email = authEmail.value.trim();
+      const password = authPassword.value.trim();
+      if (!email || !password) {
+        setStatus("Enter email and password first.", "error");
+        return;
       }
+      await createUserWithEmailAndPassword(auth, email, password);
+      setStatus("Account created. You are now logged in.", "success");
+    } catch (error) {
+      setStatus(error.message, "error");
     }
+  }
 
-    function mountTradeSubscription(user) {
-      if (unsubscribeTrades) unsubscribeTrades();
-      unsubscribeTrades = onSnapshot(getUserTradesCollection(user.uid), (snapshot) => {
+  async function login() {
+    try {
+      const email = authEmail.value.trim();
+      const password = authPassword.value.trim();
+      if (!email || !password) {
+        setStatus("Enter email and password first.", "error");
+        return;
+      }
+      await signInWithEmailAndPassword(auth, email, password);
+      setStatus("Logged in successfully.", "success");
+    } catch (error) {
+      setStatus(error.message, "error");
+    }
+  }
+
+  async function logout() {
+    try {
+      await signOut(auth);
+      setStatus("Logged out.", "success");
+    } catch (error) {
+      setStatus(error.message, "error");
+    }
+  }
+
+  function mountTradeSubscription(user) {
+    if (unsubscribeTrades) unsubscribeTrades();
+    unsubscribeTrades = onSnapshot(
+      getUserTradesCollection(user.uid),
+      (snapshot) => {
         trades = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
         renderAll();
-      }, (error) => {
+      },
+      (error) => {
         setStatus(error.message, "error");
-      });
-    }
+      }
+    );
+  }
 
-    function clearCharts() {
-      Object.values(chartInstances).forEach((instance) => instance?.destroy());
-      Object.keys(chartInstances).forEach((key) => delete chartInstances[key]);
-    }
+  function clearCharts() {
+    Object.values(chartInstances).forEach((instance) => instance?.destroy());
+    Object.keys(chartInstances).forEach((key) => delete chartInstances[key]);
+  }
 
-    function groupedDailyData(items) {
-      const map = {};
-      sortTradesAsc(items).forEach((trade) => {
-        const date = trade.date || "Unknown";
-        if (!map[date]) {
-          map[date] = { date, netPL: 0, positivePips: 0, lossPips: 0, pipsUsed: 0 };
-        }
-        map[date].netPL += safeNumber(trade.netPL);
-        const pipValue = safeNumber(trade.pips);
-        if (pipValue > 0) map[date].positivePips += pipValue;
-        if (pipValue < 0) map[date].lossPips += Math.abs(pipValue);
-        map[date].pipsUsed += safeNumber(trade.pipsUsed);
-      });
-      return Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
-    }
+  function groupedDailyData(items) {
+    const map = {};
+    sortTradesAsc(items).forEach((trade) => {
+      const date = trade.date || "Unknown";
+      if (!map[date]) {
+        map[date] = { date, netPL: 0, positivePips: 0, lossPips: 0, pipsUsed: 0 };
+      }
+      map[date].netPL += safeNumber(trade.netPL);
+      const pipValue = safeNumber(trade.pips);
+      if (pipValue > 0) map[date].positivePips += pipValue;
+      if (pipValue < 0) map[date].lossPips += Math.abs(pipValue);
+      map[date].pipsUsed += safeNumber(trade.pipsUsed);
+    });
+    return Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
+  }
 
-    function withinRangeByDays(dateValue, days) {
-      if (days === "all") return true;
-      const today = new Date();
-      today.setHours(23, 59, 59, 999);
-      const cutoff = new Date();
-      cutoff.setHours(0, 0, 0, 0);
-      cutoff.setDate(cutoff.getDate() - Number(days) + 1);
-      const current = new Date(`${dateValue}T00:00:00`);
-      return current >= cutoff && current <= today;
-    }
+  function withinRangeByDays(dateValue, days) {
+    if (days === "all") return true;
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    const cutoff = new Date();
+    cutoff.setHours(0, 0, 0, 0);
+    cutoff.setDate(cutoff.getDate() - Number(days) + 1);
+    const current = new Date(`${dateValue}T00:00:00`);
+    return current >= cutoff && current <= today;
+  }
 
-    function getChartTradeSlice() {
-      const range = chartRange.value;
-      return sortTradesAsc(trades).filter((trade) => withinRangeByDays(trade.date, range));
-    }
+  function getChartTradeSlice() {
+    const range = chartRange.value;
+    return sortTradesAsc(trades).filter((trade) => withinRangeByDays(trade.date, range));
+  }
 
-    function createChart(id, type, labels, datasetLabel, data, color, options = {}) {
-      const ctx = $(id);
-      if (!ctx) return;
-      const config = {
-        type,
-        data: {
-          labels,
-          datasets: [{
-            label: datasetLabel,
-            data,
-            borderColor: color,
-            backgroundColor: `${color}33`,
-            fill: type === "line",
-            tension: 0.24,
-            borderWidth: 2,
-            pointRadius: 3
-          }]
+  function createChart(id, type, labels, datasetLabel, data, color, options = {}) {
+    const ctx = $(id);
+    if (!ctx) return;
+
+    chartInstances[id] = new Chart(ctx, {
+      type,
+      data: {
+        labels,
+        datasets: [{
+          label: datasetLabel,
+          data,
+          borderColor: color,
+          backgroundColor: `${color}33`,
+          fill: type === "line",
+          tension: 0.24,
+          borderWidth: 2,
+          pointRadius: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        plugins: {
+          legend: { labels: { color: "#cbd5e1" } }
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { labels: { color: "#cbd5e1" } }
+        scales: {
+          x: {
+            ticks: { color: "#94a3b8" },
+            grid: { color: "rgba(148,163,184,0.08)" }
           },
-          scales: {
-            x: {
-              ticks: { color: "#94a3b8" },
-              grid: { color: "rgba(148,163,184,0.08)" }
-            },
-            y: {
-              ticks: { color: "#94a3b8" },
-              grid: { color: "rgba(148,163,184,0.08)" }
-            }
-          },
-          ...options
-        }
-      };
-      chartInstances[id] = new Chart(ctx, config);
-    }
-
-    function renderCharts() {
-      clearCharts();
-      const chartTrades = getChartTradeSlice();
-      const chronological = sortTradesAsc(chartTrades);
-      const dates = chronological.map((trade) => trade.date);
-
-      let runningProfit = 0;
-      let runningPips = 0;
-      let peak = 0;
-      const cumulativeProfit = [];
-      const cumulativePips = [];
-      const drawdown = [];
-
-      chronological.forEach((trade) => {
-        runningProfit += safeNumber(trade.netPL);
-        runningPips += safeNumber(trade.pips);
-        peak = Math.max(peak, runningProfit);
-        cumulativeProfit.push(Number(runningProfit.toFixed(2)));
-        cumulativePips.push(Number(runningPips.toFixed(1)));
-        drawdown.push(Number((peak - runningProfit).toFixed(2)));
-      });
-
-      const daily = groupedDailyData(chartTrades);
-      const dailyLabels = daily.map((row) => row.date);
-
-      const aggregateByField = (field) => {
-        const map = {};
-        chartTrades.forEach((trade) => {
-          const key = trade[field] || "Unknown";
-          map[key] = (map[key] || 0) + safeNumber(trade.netPL);
-        });
-        return Object.entries(map)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 12);
-      };
-
-      const pairAgg = aggregateByField("pair");
-      const setupAgg = aggregateByField("setupType");
-      const sessionAgg = aggregateByField("session");
-
-      createChart("cumulativeProfitChart", "line", dates, "Cumulative Net Profit", cumulativeProfit, "#38bdf8");
-      createChart("cumulativePipsChart", "line", dates, "Cumulative Pips", cumulativePips, "#22c55e");
-      createChart("dailyNetChart", "line", dailyLabels, "Daily Net P/L", daily.map((x) => Number(x.netPL.toFixed(2))), "#a78bfa");
-      createChart("dailyPositivePipsChart", "bar", dailyLabels, "Daily Profitable Pips", daily.map((x) => Number(x.positivePips.toFixed(1))), "#22c55e", { scales: { x: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(148,163,184,0.08)" } }, y: { beginAtZero: true, ticks: { color: "#94a3b8" }, grid: { color: "rgba(148,163,184,0.08)" } } } });
-      createChart("dailyLossPipsChart", "bar", dailyLabels, "Daily Loss Pips", daily.map((x) => Number(x.lossPips.toFixed(1))), "#ef4444", { scales: { x: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(148,163,184,0.08)" } }, y: { beginAtZero: true, ticks: { color: "#94a3b8" }, grid: { color: "rgba(148,163,184,0.08)" } } } });
-      createChart("dailyPipsUsedChart", "line", dailyLabels, "Daily Pips Used", daily.map((x) => Number(x.pipsUsed.toFixed(1))), "#f59e0b");
-      createChart("pairPerformanceChart", "bar", pairAgg.map((x) => x[0]), "Pair Net P/L", pairAgg.map((x) => Number(x[1].toFixed(2))), "#38bdf8", { indexAxis: "y" });
-      createChart("setupPerformanceChart", "bar", setupAgg.map((x) => x[0]), "Setup Net P/L", setupAgg.map((x) => Number(x[1].toFixed(2))), "#a78bfa", { indexAxis: "y" });
-      createChart("sessionPerformanceChart", "bar", sessionAgg.map((x) => x[0]), "Session Net P/L", sessionAgg.map((x) => Number(x[1].toFixed(2))), "#22c55e", { indexAxis: "y" });
-      createChart("drawdownChart", "line", dates, "Drawdown", drawdown, "#ef4444");
-    }
-
-    function getSummaryStats(items) {
-      const totalTrades = items.length;
-      const wins = items.filter((t) => t.result === "Win").length;
-      const losses = items.filter((t) => t.result === "Loss").length;
-      const totalProfit = items.filter((t) => safeNumber(t.netPL) > 0).reduce((sum, t) => sum + safeNumber(t.netPL), 0);
-      const totalLoss = Math.abs(items.filter((t) => safeNumber(t.netPL) < 0).reduce((sum, t) => sum + safeNumber(t.netPL), 0));
-      const totalFees = items.reduce((sum, t) => sum + safeNumber(t.fees), 0);
-      const netProfitValue = items.reduce((sum, t) => sum + safeNumber(t.netPL), 0);
-      const netPips = items.reduce((sum, t) => sum + safeNumber(t.pips), 0);
-      const totalPipsUsed = items.reduce((sum, t) => sum + safeNumber(t.pipsUsed), 0);
-      const winRate = totalTrades ? (wins / totalTrades) * 100 : 0;
-      const avgWin = wins ? totalProfit / wins : 0;
-      const avgLoss = losses ? totalLoss / losses : 0;
-      const profitFactor = totalLoss ? totalProfit / totalLoss : totalProfit > 0 ? totalProfit : 0;
-      const expectancy = totalTrades ? netProfitValue / totalTrades : 0;
-      const ruleFollowedCount = items.filter((t) => t.followedRules === "Yes").length;
-      const ruleFollowPct = totalTrades ? (ruleFollowedCount / totalTrades) * 100 : 0;
-
-      const chronological = sortTradesAsc(items);
-      let running = 0;
-      let peak = 0;
-      let maxDrawdown = 0;
-      chronological.forEach((trade) => {
-        running += safeNumber(trade.netPL);
-        peak = Math.max(peak, running);
-        maxDrawdown = Math.max(maxDrawdown, peak - running);
-      });
-
-      const streakTrades = sortTradesDesc(items);
-      let streakValue = 0;
-      let streakLabel = "None";
-      if (streakTrades.length) {
-        const firstValid = streakTrades.find((t) => ["Win", "Loss"].includes(t.result));
-        if (firstValid) {
-          const target = firstValid.result;
-          streakLabel = target === "Win" ? "W" : "L";
-          for (const trade of streakTrades) {
-            if (trade.result === target) streakValue += 1;
-            else if (["Win", "Loss"].includes(trade.result)) break;
+          y: {
+            ticks: { color: "#94a3b8" },
+            grid: { color: "rgba(148,163,184,0.08)" }
           }
-        }
+        },
+        ...options
+      }
+    });
+  }
+
+  function groupNetPLBy(items, keyFn) {
+    const map = {};
+    items.forEach((trade) => {
+      const key = keyFn(trade);
+      map[key] = (map[key] || 0) + safeNumber(trade.netPL);
+    });
+    return map;
+  }
+
+  function getLargestStreak(type, items = trades) {
+    let current = 0;
+    let best = 0;
+    sortTradesAsc(items).forEach((trade) => {
+      if (trade.result === type) {
+        current += 1;
+        best = Math.max(best, current);
+      } else if (trade.result === "Win" || trade.result === "Loss") {
+        current = 0;
+      }
+    });
+    return best;
+  }
+
+  function average(values) {
+    return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+  }
+
+  function computeFieldPerformance(items, field) {
+    const map = {};
+    items.forEach((trade) => {
+      const key = trade[field] || "Unknown";
+      map[key] = (map[key] || 0) + safeNumber(trade.netPL);
+    });
+    const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
+    return {
+      best: entries[0] || ["-", 0],
+      worst: entries[entries.length - 1] || ["-", 0]
+    };
+  }
+
+  function mostCommonMistake(items) {
+    const map = {};
+    items.forEach((trade) => {
+      if (!trade.mistakeType) return;
+      map[trade.mistakeType] = (map[trade.mistakeType] || 0) + 1;
+    });
+    const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
+    return entries[0] || ["No mistake tagged", 0];
+  }
+
+  function getSummaryStats(items) {
+    const totalTrades = items.length;
+    const wins = items.filter((t) => t.result === "Win").length;
+    const losses = items.filter((t) => t.result === "Loss").length;
+    const totalProfit = items.filter((t) => safeNumber(t.netPL) > 0).reduce((sum, t) => sum + safeNumber(t.netPL), 0);
+    const totalLoss = Math.abs(items.filter((t) => safeNumber(t.netPL) < 0).reduce((sum, t) => sum + safeNumber(t.netPL), 0));
+    const totalFees = items.reduce((sum, t) => sum + safeNumber(t.fees), 0);
+    const netProfitValue = items.reduce((sum, t) => sum + safeNumber(t.netPL), 0);
+    const netPips = items.reduce((sum, t) => sum + safeNumber(t.pips), 0);
+    const totalPipsUsed = items.reduce((sum, t) => sum + safeNumber(t.pipsUsed), 0);
+    const winRate = totalTrades ? (wins / totalTrades) * 100 : 0;
+    const avgWin = wins ? totalProfit / wins : 0;
+    const avgLoss = losses ? totalLoss / losses : 0;
+    const profitFactor = totalLoss ? totalProfit / totalLoss : totalProfit > 0 ? totalProfit : 0;
+    const expectancy = totalTrades ? netProfitValue / totalTrades : 0;
+    const ruleFollowedCount = items.filter((t) => t.followedRules === "Yes").length;
+    const ruleBrokenCount = items.filter((t) => t.followedRules === "No").length;
+    const ruleFollowPct = totalTrades ? (ruleFollowedCount / totalTrades) * 100 : 0;
+    const avgDuration = average(items.map(t => safeNumber(t.tradeDurationMinutes)));
+    const avgFee = totalTrades ? totalFees / totalTrades : 0;
+    const avgRR = average(items.filter(t => t.actualRR != null).map(t => safeNumber(t.actualRR)));
+
+    const dailyMap = {};
+    items.forEach((trade) => {
+      if (!dailyMap[trade.date]) dailyMap[trade.date] = [];
+      dailyMap[trade.date].push(trade);
+    });
+    const dailyGroups = Object.values(dailyMap);
+    const positiveDaily = dailyGroups
+      .map(group => group.filter(t => safeNumber(t.netPL) > 0).reduce((sum, t) => sum + safeNumber(t.netPL), 0))
+      .filter(v => v > 0);
+    const negativeDaily = dailyGroups
+      .map(group => Math.abs(group.filter(t => safeNumber(t.netPL) < 0).reduce((sum, t) => sum + safeNumber(t.netPL), 0)))
+      .filter(v => v > 0);
+    const profitablePipsDaily = dailyGroups
+      .map(group => group.filter(t => safeNumber(t.pips) > 0).reduce((sum, t) => sum + safeNumber(t.pips), 0))
+      .filter(v => v > 0);
+    const losingPipsDaily = dailyGroups
+      .map(group => Math.abs(group.filter(t => safeNumber(t.pips) < 0).reduce((sum, t) => sum + safeNumber(t.pips), 0)))
+      .filter(v => v > 0);
+
+    const chronological = sortTradesAsc(items);
+    let running = 0;
+    let peak = 0;
+    let maxDrawdown = 0;
+    chronological.forEach((trade) => {
+      running += safeNumber(trade.netPL);
+      peak = Math.max(peak, running);
+      maxDrawdown = Math.max(maxDrawdown, peak - running);
+    });
+
+    const balanceTrades = chronological.filter(t => t.accountBalanceAfter != null);
+    const firstBalance = balanceTrades.length ? safeNumber(balanceTrades[0].accountBalanceAfter) : 0;
+    const lastBalance = balanceTrades.length ? safeNumber(balanceTrades[balanceTrades.length - 1].accountBalanceAfter) : 0;
+    const balanceGrowthPct = firstBalance ? ((lastBalance - firstBalance) / firstBalance) * 100 : 0;
+
+    let balancePeak = 0;
+    let balanceDrawdownPeak = 0;
+    balanceTrades.forEach((trade) => {
+      const balance = safeNumber(trade.accountBalanceAfter);
+      balancePeak = Math.max(balancePeak, balance);
+      balanceDrawdownPeak = Math.max(balanceDrawdownPeak, balancePeak - balance);
+    });
+
+    return {
+      totalTrades,
+      wins,
+      losses,
+      totalProfit,
+      totalLoss,
+      totalFees,
+      netProfitValue,
+      netPips,
+      totalPipsUsed,
+      winRate,
+      avgWin,
+      avgLoss,
+      profitFactor,
+      expectancy,
+      maxDrawdown,
+      streakLabel: `${getLargestStreak("Win", items)}W / ${getLargestStreak("Loss", items)}L`,
+      ruleFollowPct,
+      ruleBrokenCount,
+      avgDuration,
+      avgFee,
+      avgRR,
+      avgDailyProfit: average(positiveDaily),
+      avgDailyLoss: average(negativeDaily),
+      avgProfitablePipsPerDay: average(profitablePipsDaily),
+      avgLosingPipsPerDay: average(losingPipsDaily),
+      balancePeak,
+      balanceGrowthPct,
+      balanceDrawdownPeak
+    };
+  }
+
+  function statCard(title, value, className = "neutral", meta = "") {
+    return `
+      <div class="panel stat-card">
+        <h3>${title}</h3>
+        <div class="value ${className}">${value}</div>
+        ${meta ? `<div class="meta">${meta}</div>` : ""}
+      </div>
+    `;
+  }
+
+  function renderStats() {
+    const stats = getSummaryStats(trades);
+    statsGrid.innerHTML = [
+      statCard("Total Trades", stats.totalTrades),
+      statCard("Wins / Losses", `${stats.wins} / ${stats.losses}`),
+      statCard("Net Profit", formatMoney(stats.netProfitValue), stats.netProfitValue >= 0 ? "positive" : "negative"),
+      statCard("Total Profit", formatMoney(stats.totalProfit), "positive"),
+      statCard("Total Loss", formatMoney(stats.totalLoss), "negative"),
+      statCard("Fees / Commission", formatMoney(stats.totalFees), "warning"),
+      statCard("Net Pips", formatNum(stats.netPips, 1), stats.netPips >= 0 ? "positive" : "negative"),
+      statCard("Pips Used", formatNum(stats.totalPipsUsed, 1)),
+      statCard("Win Rate", `${stats.winRate.toFixed(1)}%`, "accent"),
+      statCard("Profit Factor", stats.profitFactor ? stats.profitFactor.toFixed(2) : "0.00", "accent"),
+      statCard("Expectancy / Trade", formatMoney(stats.expectancy), stats.expectancy >= 0 ? "positive" : "negative"),
+      statCard("Average Win", formatMoney(stats.avgWin), "positive"),
+      statCard("Average Loss", formatMoney(stats.avgLoss), "negative"),
+      statCard("Max Drawdown", formatMoney(stats.maxDrawdown), "negative"),
+      statCard("Current Streak", stats.streakLabel, "neutral"),
+      statCard("Followed Plan %", `${stats.ruleFollowPct.toFixed(1)}%`, stats.ruleFollowPct >= 70 ? "positive" : "warning"),
+      statCard("Average Duration", formatDuration(stats.avgDuration), "accent"),
+      statCard("Average Fee / Trade", formatMoney(stats.avgFee), "warning"),
+      statCard("Average RR", stats.avgRR ? stats.avgRR.toFixed(2) : "0.00", "accent"),
+      statCard("Broken Rules", stats.ruleBrokenCount, stats.ruleBrokenCount ? "negative" : "positive"),
+      statCard("Largest Win Streak", `${getLargestStreak("Win")}`, "positive"),
+      statCard("Largest Loss Streak", `${getLargestStreak("Loss")}`, "negative"),
+      statCard("Avg Daily Profit", formatMoney(stats.avgDailyProfit), "positive"),
+      statCard("Avg Daily Loss", formatMoney(stats.avgDailyLoss), "negative"),
+      statCard("Avg +Pips / Day", formatNum(stats.avgProfitablePipsPerDay, 1), "positive"),
+      statCard("Avg -Pips / Day", formatNum(stats.avgLosingPipsPerDay, 1), "negative"),
+      statCard("Best Balance Peak", formatMoney(stats.balancePeak), "positive"),
+      statCard("Balance Growth %", `${stats.balanceGrowthPct.toFixed(2)}%`, stats.balanceGrowthPct >= 0 ? "positive" : "negative"),
+      statCard("Balance Drawdown", formatMoney(stats.balanceDrawdownPeak), "negative")
+    ].join("");
+  }
+
+  function renderInsights() {
+    const pairPerf = computeFieldPerformance(trades, "pair");
+    const setupPerf = computeFieldPerformance(trades, "setupType");
+    const sessionPerf = computeFieldPerformance(trades, "session");
+    const mistake = mostCommonMistake(trades);
+
+    const weekdayMap = groupNetPLBy(trades, t => ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][getWeekdayNumber(t.date)]);
+    const monthMap = groupNetPLBy(trades, t => (t.date || "").slice(0, 7));
+    const weekdayEntries = Object.entries(weekdayMap).sort((a, b) => b[1] - a[1]);
+    const monthEntries = Object.entries(monthMap).sort((a, b) => b[1] - a[1]);
+
+    const bestWeekday = weekdayEntries[0] || ["-", 0];
+    const worstWeekday = weekdayEntries[weekdayEntries.length - 1] || ["-", 0];
+    const bestMonth = monthEntries[0] || ["-", 0];
+    const worstMonth = monthEntries[monthEntries.length - 1] || ["-", 0];
+
+    const rulesYesProfit = trades.filter(t => t.followedRules === "Yes").reduce((s, t) => s + safeNumber(t.netPL), 0);
+    const rulesNoProfit = trades.filter(t => t.followedRules === "No").reduce((s, t) => s + safeNumber(t.netPL), 0);
+
+    insightsGrid.innerHTML = `
+      <div class="panel insight-card"><h3>Best Pair</h3><div class="value positive">${escapeHTML(pairPerf.best[0])}</div><div class="meta">${formatMoney(pairPerf.best[1])}</div></div>
+      <div class="panel insight-card"><h3>Worst Pair</h3><div class="value negative">${escapeHTML(pairPerf.worst[0])}</div><div class="meta">${formatMoney(pairPerf.worst[1])}</div></div>
+      <div class="panel insight-card"><h3>Most Profitable Setup</h3><div class="value accent">${escapeHTML(setupPerf.best[0])}</div><div class="meta">${formatMoney(setupPerf.best[1])}</div></div>
+      <div class="panel insight-card"><h3>Least Profitable Setup</h3><div class="value warning">${escapeHTML(setupPerf.worst[0])}</div><div class="meta">${formatMoney(setupPerf.worst[1])}</div></div>
+      <div class="panel insight-card"><h3>Best Session</h3><div class="value positive">${escapeHTML(sessionPerf.best[0])}</div><div class="meta">${formatMoney(sessionPerf.best[1])}</div></div>
+      <div class="panel insight-card"><h3>Worst Session</h3><div class="value negative">${escapeHTML(sessionPerf.worst[0])}</div><div class="meta">${formatMoney(sessionPerf.worst[1])}</div></div>
+      <div class="panel insight-card"><h3>Best Weekday</h3><div class="value accent">${escapeHTML(bestWeekday[0])}</div><div class="meta">${formatMoney(bestWeekday[1])}</div></div>
+      <div class="panel insight-card"><h3>Worst Weekday</h3><div class="value warning">${escapeHTML(worstWeekday[0])}</div><div class="meta">${formatMoney(worstWeekday[1])}</div></div>
+      <div class="panel insight-card"><h3>Best Month</h3><div class="value positive">${escapeHTML(bestMonth[0])}</div><div class="meta">${formatMoney(bestMonth[1])}</div></div>
+      <div class="panel insight-card"><h3>Worst Month</h3><div class="value negative">${escapeHTML(worstMonth[0])}</div><div class="meta">${formatMoney(worstMonth[1])}</div></div>
+      <div class="panel insight-card"><h3>Most Common Mistake</h3><div class="value warning">${escapeHTML(mistake[0])}</div><div class="meta">${mistake[1]} trade(s)</div></div>
+      <div class="panel insight-card"><h3>Rules Followed vs Broken</h3><div class="value accent">${formatMoney(rulesYesProfit)}</div><div class="meta">Broken: ${formatMoney(rulesNoProfit)}</div></div>
+    `;
+
+    const mistakeFreq = {};
+    trades.forEach(t => {
+      if (!t.mistakeType) return;
+      mistakeFreq[t.mistakeType] = (mistakeFreq[t.mistakeType] || 0) + 1;
+    });
+
+    const emotionFreq = {};
+    trades.forEach(t => {
+      [t.emotionBefore, t.emotionAfter].filter(Boolean).forEach(em => {
+        emotionFreq[em] = (emotionFreq[em] || 0) + 1;
+      });
+    });
+
+    disciplineGrid.innerHTML = `
+      <div class="panel insight-card"><h3>Rules Broken</h3><div class="value negative">${trades.filter(t => t.followedRules === "No").length}</div></div>
+      <div class="panel insight-card"><h3>Profit with Rules Followed</h3><div class="value positive">${formatMoney(rulesYesProfit)}</div></div>
+      <div class="panel insight-card"><h3>Profit with Rules Broken</h3><div class="value ${rulesNoProfit >= 0 ? "positive" : "negative"}">${formatMoney(rulesNoProfit)}</div></div>
+      <div class="panel insight-card"><h3>Mistake Frequency</h3><div class="meta">${Object.entries(mistakeFreq).sort((a,b)=>b[1]-a[1]).slice(0,5).map(x => `${x[0]} (${x[1]})`).join("<br>") || "No data"}</div></div>
+      <div class="panel insight-card"><h3>Emotional Trade Analysis</h3><div class="meta">${Object.entries(emotionFreq).sort((a,b)=>b[1]-a[1]).slice(0,5).map(x => `${x[0]} (${x[1]})`).join("<br>") || "No data"}</div></div>
+    `;
+
+    const nowMonth = new Date().toISOString().slice(0, 7);
+    const thisMonthTrades = trades.filter(t => (t.date || "").startsWith(nowMonth));
+    const topPairThisMonth = computeFieldPerformance(thisMonthTrades, "pair").best;
+    const mainMistakeThisMonth = mostCommonMistake(thisMonthTrades);
+    const monthStats = getSummaryStats(thisMonthTrades);
+
+    monthlyReportGrid.innerHTML = `
+      <div class="panel insight-card"><h3>This Month Trades</h3><div class="value accent">${thisMonthTrades.length}</div></div>
+      <div class="panel insight-card"><h3>This Month Net Profit</h3><div class="value ${monthStats.netProfitValue >= 0 ? "positive" : "negative"}">${formatMoney(monthStats.netProfitValue)}</div></div>
+      <div class="panel insight-card"><h3>This Month Win Rate</h3><div class="value accent">${monthStats.winRate.toFixed(1)}%</div></div>
+      <div class="panel insight-card"><h3>Top Pair This Month</h3><div class="value positive">${escapeHTML(topPairThisMonth[0] || "-")}</div></div>
+      <div class="panel insight-card"><h3>Main Mistake This Month</h3><div class="value warning">${escapeHTML(mainMistakeThisMonth[0] || "None")}</div></div>
+    `;
+  }
+
+  function getStartOfWeek(dateObj) {
+    const current = new Date(dateObj);
+    const day = current.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    current.setDate(current.getDate() + diff);
+    current.setHours(0, 0, 0, 0);
+    return current;
+  }
+
+  function getEndOfWeek(dateObj) {
+    const start = getStartOfWeek(dateObj);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return end;
+  }
+
+  function getPeriodTrades(referenceDateStr) {
+    const reference = new Date(`${referenceDateStr}T12:00:00`);
+    const startWeek = getStartOfWeek(reference);
+    const endWeek = getEndOfWeek(reference);
+    const month = `${reference.getFullYear()}-${String(reference.getMonth() + 1).padStart(2, "0")}`;
+
+    const dayTrades = trades.filter((t) => t.date === referenceDateStr);
+    const weekTrades = trades.filter((t) => {
+      const d = new Date(`${t.date}T12:00:00`);
+      return d >= startWeek && d <= endWeek;
+    });
+    const monthTrades = trades.filter((t) => (t.date || "").slice(0, 7) === month);
+
+    return { dayTrades, weekTrades, monthTrades };
+  }
+
+  function renderPeriodGrid() {
+    const currentDate = periodDate.value || new Date().toISOString().split("T")[0];
+    const { dayTrades, weekTrades, monthTrades } = getPeriodTrades(currentDate);
+
+    const dayStats = getSummaryStats(dayTrades);
+    const weekStats = getSummaryStats(weekTrades);
+    const monthStats = getSummaryStats(monthTrades);
+
+    const positivePips = (list) => list.filter((t) => safeNumber(t.pips) > 0).reduce((sum, t) => sum + safeNumber(t.pips), 0);
+    const lossPips = (list) => list.filter((t) => safeNumber(t.pips) < 0).reduce((sum, t) => sum + Math.abs(safeNumber(t.pips)), 0);
+
+    periodGrid.innerHTML = `
+      <div class="panel mini-card">
+        <h3>Selected Day</h3>
+        <div class="value ${dayStats.netProfitValue >= 0 ? "positive" : "negative"}">${formatMoney(dayStats.netProfitValue)}</div>
+        <div class="meta">Trades: ${dayStats.totalTrades} • +Pips: ${formatNum(positivePips(dayTrades), 1)} • -Pips: ${formatNum(lossPips(dayTrades), 1)}</div>
+      </div>
+      <div class="panel mini-card">
+        <h3>Selected Week</h3>
+        <div class="value ${weekStats.netProfitValue >= 0 ? "positive" : "negative"}">${formatMoney(weekStats.netProfitValue)}</div>
+        <div class="meta">Trades: ${weekStats.totalTrades} • Win rate: ${weekStats.winRate.toFixed(1)}% • Pips: ${formatNum(weekStats.netPips, 1)}</div>
+      </div>
+      <div class="panel mini-card">
+        <h3>Selected Month</h3>
+        <div class="value ${monthStats.netProfitValue >= 0 ? "positive" : "negative"}">${formatMoney(monthStats.netProfitValue)}</div>
+        <div class="meta">Trades: ${monthStats.totalTrades} • Fees: ${formatMoney(monthStats.totalFees)} • Pips: ${formatNum(monthStats.netPips, 1)}</div>
+      </div>
+    `;
+  }
+
+  function getFilteredTrades() {
+    const search = searchInput.value.trim().toLowerCase();
+    const resultValue = filterResult.value;
+    const sessionValue = filterSession.value;
+    const rulesValue = filterRules.value;
+    const pairValue = filterPair.value.trim().toLowerCase();
+    const setupValue = filterSetup.value.trim().toLowerCase();
+    const mistakeValue = filterMistake.value.trim().toLowerCase();
+    const fromDate = filterFromDate.value;
+    const toDate = filterToDate.value;
+    const monthValue = filterMonth.value;
+    const weekdayValue = filterWeekday.value;
+    const emotionValue = filterEmotion.value.trim().toLowerCase();
+    const minProfit = filterMinProfit.value === "" ? null : Number(filterMinProfit.value);
+    const maxProfit = filterMaxProfit.value === "" ? null : Number(filterMaxProfit.value);
+    const minPipsValue = filterMinPips.value === "" ? null : Number(filterMinPips.value);
+    const maxPipsValue = filterMaxPips.value === "" ? null : Number(filterMaxPips.value);
+
+    return sortTradesDesc(trades).filter((trade) => {
+      const haystack = [
+        trade.date,
+        trade.pair,
+        trade.direction,
+        trade.setupType,
+        trade.session,
+        trade.result,
+        trade.notes,
+        trade.mistakeType,
+        trade.emotionBefore,
+        trade.emotionAfter
+      ].join(" ").toLowerCase();
+
+      if (search && !haystack.includes(search)) return false;
+      if (resultValue && trade.result !== resultValue) return false;
+      if (sessionValue && trade.session !== sessionValue) return false;
+      if (rulesValue && trade.followedRules !== rulesValue) return false;
+      if (pairValue && !(trade.pair || "").toLowerCase().includes(pairValue)) return false;
+      if (setupValue && !(trade.setupType || "").toLowerCase().includes(setupValue)) return false;
+      if (mistakeValue && !(trade.mistakeType || "").toLowerCase().includes(mistakeValue)) return false;
+
+      if (emotionValue) {
+        const emotions = `${trade.emotionBefore || ""} ${trade.emotionAfter || ""}`.toLowerCase();
+        if (!emotions.includes(emotionValue)) return false;
       }
 
-      return {
-        totalTrades,
-        wins,
-        losses,
-        totalProfit,
-        totalLoss,
-        totalFees,
-        netProfitValue,
-        netPips,
-        totalPipsUsed,
-        winRate,
-        avgWin,
-        avgLoss,
-        profitFactor,
-        expectancy,
-        maxDrawdown,
-        streakLabel: streakValue ? `${streakLabel}${streakValue}` : "None",
-        ruleFollowPct
-      };
+      if (fromDate && (trade.date || "") < fromDate) return false;
+      if (toDate && (trade.date || "") > toDate) return false;
+      if (monthValue && !(trade.date || "").startsWith(monthValue)) return false;
+      if (weekdayValue !== "" && String(getWeekdayNumber(trade.date)) !== weekdayValue) return false;
+      if (minProfit !== null && safeNumber(trade.netPL) < minProfit) return false;
+      if (maxProfit !== null && safeNumber(trade.netPL) > maxProfit) return false;
+      if (minPipsValue !== null && safeNumber(trade.pips) < minPipsValue) return false;
+      if (maxPipsValue !== null && safeNumber(trade.pips) > maxPipsValue) return false;
+
+      return true;
+    });
+  }
+
+  function renderTable() {
+    const items = getFilteredTrades();
+
+    if (!items.length) {
+      tradeTableBody.innerHTML = `<tr><td colspan="21" class="empty">No trades found for the current filters.</td></tr>`;
+      if (tradeCardsContainer) {
+        tradeCardsContainer.innerHTML = `<div class="empty">No trades found for the current filters.</div>`;
+      }
+      return;
     }
 
-    function statCard(title, value, className = "neutral", meta = "") {
-      return `
-        <div class="panel stat-card">
-          <h3>${title}</h3>
-          <div class="value ${className}">${value}</div>
-          ${meta ? `<div class="meta">${meta}</div>` : ""}
+    tradeTableBody.innerHTML = items.map((trade) => `
+      <tr>
+        <td>${escapeHTML(trade.date || "-")}</td>
+        <td>${escapeHTML(trade.entryTime || "-")}</td>
+        <td>${escapeHTML(trade.exitTime || "-")}</td>
+        <td>${escapeHTML(formatDuration(trade.tradeDurationMinutes || 0))}</td>
+        <td>${escapeHTML(trade.pair || "-")}</td>
+        <td>${escapeHTML(trade.direction || "-")}</td>
+        <td>${escapeHTML(trade.setupType || "-")}</td>
+        <td>${escapeHTML(trade.session || "-")}</td>
+        <td class="${safeNumber(trade.grossPL) >= 0 ? "positive" : "negative"}">${formatMoney(trade.grossPL)}</td>
+        <td class="warning">${formatMoney(trade.fees)}</td>
+        <td class="${safeNumber(trade.netPL) >= 0 ? "positive" : "negative"}">${formatMoney(trade.netPL)}<br>${resultTag(trade.result)}</td>
+        <td class="${safeNumber(trade.pips) >= 0 ? "positive" : "negative"}">${formatNum(trade.pips, 1)}</td>
+        <td>${formatNum(trade.pipsUsed, 1)}</td>
+        <td>${trade.plannedRR ?? "-"}</td>
+        <td>${trade.actualRR ?? "-"}</td>
+        <td>${rulesTag(trade.followedRules || "No")}</td>
+        <td>${escapeHTML(trade.mistakeType || "-")}</td>
+        <td>${escapeHTML([trade.emotionBefore, trade.emotionAfter].filter(Boolean).join(" → ") || "-")}</td>
+        <td>${trade.accountBalanceAfter != null ? formatMoney(trade.accountBalanceAfter) : "-"}</td>
+        <td>${escapeHTML(trade.notes || "-")}</td>
+        <td>
+          <div class="table-actions">
+            <button class="btn-muted small-btn" type="button" data-action="edit" data-id="${trade.id}">Edit</button>
+            <button class="btn-danger small-btn" type="button" data-action="delete" data-id="${trade.id}">Delete</button>
+          </div>
+        </td>
+      </tr>
+    `).join("");
+
+    if (tradeCardsContainer) {
+      tradeCardsContainer.innerHTML = items.map((trade) => `
+        <div class="trade-card">
+          <div class="row"><span class="label">Date</span><strong>${escapeHTML(trade.date || "-")}</strong></div>
+          <div class="row"><span class="label">Pair</span><strong>${escapeHTML(trade.pair || "-")}</strong></div>
+          <div class="row"><span class="label">Direction</span><strong>${escapeHTML(trade.direction || "-")}</strong></div>
+          <div class="row"><span class="label">Net P/L</span><strong class="${safeNumber(trade.netPL) >= 0 ? "positive" : "negative"}">${formatMoney(trade.netPL)}</strong></div>
+          <div class="row"><span class="label">Pips</span><strong class="${safeNumber(trade.pips) >= 0 ? "positive" : "negative"}">${formatNum(trade.pips, 1)}</strong></div>
+          <div class="row"><span class="label">Setup</span><strong>${escapeHTML(trade.setupType || "-")}</strong></div>
+          <div class="row"><span class="label">Session</span><strong>${escapeHTML(trade.session || "-")}</strong></div>
+          <div class="row"><span class="label">Rules</span><strong>${escapeHTML(trade.followedRules || "-")}</strong></div>
+          <div class="row"><span class="label">Mistake</span><strong>${escapeHTML(trade.mistakeType || "-")}</strong></div>
+          <div class="row"><span class="label">Emotion</span><strong>${escapeHTML([trade.emotionBefore, trade.emotionAfter].filter(Boolean).join(" → ") || "-")}</strong></div>
+          <div class="row">
+            <span class="label">Actions</span>
+            <span>
+              <button class="btn-muted small-btn" type="button" data-action="edit" data-id="${trade.id}">Edit</button>
+              <button class="btn-danger small-btn" type="button" data-action="delete" data-id="${trade.id}">Delete</button>
+            </span>
+          </div>
         </div>
-      `;
+      `).join("");
+    }
+  }
+
+  function fillForm(trade) {
+    editingId = trade.id;
+    tradeDate.value = trade.date || "";
+    entryTime.value = trade.entryTime || "";
+    exitTime.value = trade.exitTime || "";
+    pair.value = trade.pair || "";
+    direction.value = trade.direction || "Buy";
+    setupType.value = trade.setupType || "";
+    session.value = trade.session || "";
+    entryPrice.value = trade.entryPrice ?? "";
+    exitPrice.value = trade.exitPrice ?? "";
+    stopLoss.value = trade.stopLoss ?? "";
+    takeProfit.value = trade.takeProfit ?? "";
+    lotSize.value = trade.lotSize ?? "";
+    riskPercent.value = trade.riskPercent ?? "";
+    grossPL.value = trade.grossPL ?? 0;
+    fees.value = trade.fees ?? 0;
+    pips.value = trade.pips ?? 0;
+    pipsUsed.value = trade.pipsUsed ?? 0;
+    plannedRR.value = trade.plannedRR ?? "";
+    actualRR.value = trade.actualRR ?? "";
+    result.value = trade.result || "Win";
+    followedRules.value = trade.followedRules || "Yes";
+    mistakeType.value = trade.mistakeType || "";
+    emotionBefore.value = trade.emotionBefore || "";
+    emotionAfter.value = trade.emotionAfter || "";
+    accountBalanceAfter.value = trade.accountBalanceAfter ?? "";
+    notes.value = trade.notes || "";
+    updateDurationPreview();
+    updateNetPreview();
+    formHeading.textContent = "Edit Trade";
+    saveTradeBtn.textContent = "Update Trade";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function saveTrade(event) {
+    event.preventDefault();
+    const user = auth.currentUser;
+    if (!user) {
+      setStatus("Please log in first.", "error");
+      return;
     }
 
-    function renderStats() {
-      const stats = getSummaryStats(trades);
-      statsGrid.innerHTML = [
-        statCard("Total Trades", stats.totalTrades),
-        statCard("Wins / Losses", `${stats.wins} / ${stats.losses}`),
-        statCard("Net Profit", formatMoney(stats.netProfitValue), stats.netProfitValue >= 0 ? "positive" : "negative"),
-        statCard("Total Profit", formatMoney(stats.totalProfit), "positive"),
-        statCard("Total Loss", formatMoney(stats.totalLoss), "negative"),
-        statCard("Fees / Commission", formatMoney(stats.totalFees), "warning"),
-        statCard("Net Pips", formatNum(stats.netPips, 1), stats.netPips >= 0 ? "positive" : "negative"),
-        statCard("Pips Used", formatNum(stats.totalPipsUsed, 1)),
-        statCard("Win Rate", `${stats.winRate.toFixed(1)}%`, "accent"),
-        statCard("Profit Factor", stats.profitFactor ? stats.profitFactor.toFixed(2) : "0.00", "accent"),
-        statCard("Expectancy / Trade", formatMoney(stats.expectancy), stats.expectancy >= 0 ? "positive" : "negative"),
-        statCard("Average Win", formatMoney(stats.avgWin), "positive"),
-        statCard("Average Loss", formatMoney(stats.avgLoss), "negative"),
-        statCard("Max Drawdown", formatMoney(stats.maxDrawdown), "negative"),
-        statCard("Current Streak", stats.streakLabel, "neutral"),
-        statCard("Followed Plan %", `${stats.ruleFollowPct.toFixed(1)}%`, stats.ruleFollowPct >= 70 ? "positive" : "warning")
-      ].join("");
+    const payload = getFormTrade();
+    if (!payload.date || !payload.pair) {
+      setStatus("Trade date and pair are required.", "error");
+      return;
     }
 
-    function computeFieldPerformance(items, field) {
+    try {
+      if (editingId) {
+        const existing = trades.find((t) => t.id === editingId);
+        await updateDoc(doc(db, "users", user.uid, "trades", editingId), {
+          ...payload,
+          createdAt: existing?.createdAt || Date.now()
+        });
+        setStatus("Trade updated.", "success");
+      } else {
+        await addDoc(getUserTradesCollection(user.uid), {
+          ...payload,
+          createdAt: Date.now()
+        });
+        setStatus("Trade saved.", "success");
+      }
+      resetForm();
+    } catch (error) {
+      setStatus(error.message, "error");
+    }
+  }
+
+  async function deleteTradeById(id) {
+    const user = auth.currentUser;
+    if (!user) return;
+    const ok = confirm("Delete this trade?");
+    if (!ok) return;
+
+    try {
+      await deleteDoc(doc(db, "users", user.uid, "trades", id));
+      setStatus("Trade deleted.", "success");
+      if (editingId === id) resetForm();
+    } catch (error) {
+      setStatus(error.message, "error");
+    }
+  }
+
+  function renderCharts() {
+    clearCharts();
+    const chartTrades = getChartTradeSlice();
+    const chronological = sortTradesAsc(chartTrades);
+    const dates = chronological.map((trade) => trade.date);
+
+    let runningProfit = 0;
+    let runningPips = 0;
+    let peak = 0;
+    const cumulativeProfit = [];
+    const cumulativePips = [];
+    const drawdown = [];
+
+    chronological.forEach((trade) => {
+      runningProfit += safeNumber(trade.netPL);
+      runningPips += safeNumber(trade.pips);
+      peak = Math.max(peak, runningProfit);
+      cumulativeProfit.push(Number(runningProfit.toFixed(2)));
+      cumulativePips.push(Number(runningPips.toFixed(1)));
+      drawdown.push(Number((peak - runningProfit).toFixed(2)));
+    });
+
+    const daily = groupedDailyData(chartTrades);
+    const dailyLabels = daily.map((row) => row.date);
+
+    const aggregateByField = (field) => {
       const map = {};
-      items.forEach((trade) => {
+      chartTrades.forEach((trade) => {
         const key = trade[field] || "Unknown";
         map[key] = (map[key] || 0) + safeNumber(trade.netPL);
       });
-      const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
-      return {
-        best: entries[0] || ["-", 0],
-        worst: entries[entries.length - 1] || ["-", 0]
-      };
-    }
+      return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 12);
+    };
 
-    function mostCommonMistake(items) {
-      const map = {};
-      items.forEach((trade) => {
-        if (!trade.mistakeType) return;
-        map[trade.mistakeType] = (map[trade.mistakeType] || 0) + 1;
-      });
-      const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
-      return entries[0] || ["No mistake tagged", 0];
-    }
+    const pairAgg = aggregateByField("pair");
+    const setupAgg = aggregateByField("setupType");
+    const sessionAgg = aggregateByField("session");
 
-    function renderInsights() {
-      const pairPerf = computeFieldPerformance(trades, "pair");
-      const setupPerf = computeFieldPerformance(trades, "setupType");
-      const mistake = mostCommonMistake(trades);
-      const badRules = trades.filter((t) => t.followedRules === "No").length;
-
-      insightsGrid.innerHTML = `
-        <div class="panel insight-card">
-          <h3>Best Pair</h3>
-          <div class="value positive">${escapeHTML(pairPerf.best[0])}</div>
-          <div class="meta">${formatMoney(pairPerf.best[1])}</div>
-        </div>
-        <div class="panel insight-card">
-          <h3>Worst Pair</h3>
-          <div class="value negative">${escapeHTML(pairPerf.worst[0])}</div>
-          <div class="meta">${formatMoney(pairPerf.worst[1])}</div>
-        </div>
-        <div class="panel insight-card">
-          <h3>Best Setup</h3>
-          <div class="value accent">${escapeHTML(setupPerf.best[0])}</div>
-          <div class="meta">${formatMoney(setupPerf.best[1])}</div>
-        </div>
-        <div class="panel insight-card">
-          <h3>Most Common Mistake</h3>
-          <div class="value warning">${escapeHTML(mistake[0])}</div>
-          <div class="meta">${mistake[1]} trade(s) • Rule breaks: ${badRules}</div>
-        </div>
-      `;
-    }
-
-    function getStartOfWeek(dateObj) {
-      const current = new Date(dateObj);
-      const day = current.getDay();
-      const diff = day === 0 ? -6 : 1 - day;
-      current.setDate(current.getDate() + diff);
-      current.setHours(0, 0, 0, 0);
-      return current;
-    }
-
-    function getEndOfWeek(dateObj) {
-      const start = getStartOfWeek(dateObj);
-      const end = new Date(start);
-      end.setDate(start.getDate() + 6);
-      end.setHours(23, 59, 59, 999);
-      return end;
-    }
-
-    function getPeriodTrades(referenceDateStr) {
-      const reference = new Date(`${referenceDateStr}T12:00:00`);
-      const startWeek = getStartOfWeek(reference);
-      const endWeek = getEndOfWeek(reference);
-      const month = `${reference.getFullYear()}-${String(reference.getMonth() + 1).padStart(2, "0")}`;
-
-      const dayTrades = trades.filter((t) => t.date === referenceDateStr);
-      const weekTrades = trades.filter((t) => {
-        const d = new Date(`${t.date}T12:00:00`);
-        return d >= startWeek && d <= endWeek;
-      });
-      const monthTrades = trades.filter((t) => (t.date || "").slice(0, 7) === month);
-      return { dayTrades, weekTrades, monthTrades };
-    }
-
-    function renderPeriodGrid() {
-      const currentDate = periodDate.value || new Date().toISOString().split("T")[0];
-      const { dayTrades, weekTrades, monthTrades } = getPeriodTrades(currentDate);
-
-      const dayStats = getSummaryStats(dayTrades);
-      const weekStats = getSummaryStats(weekTrades);
-      const monthStats = getSummaryStats(monthTrades);
-
-      const positivePips = (list) => list.filter((t) => safeNumber(t.pips) > 0).reduce((sum, t) => sum + safeNumber(t.pips), 0);
-      const lossPips = (list) => list.filter((t) => safeNumber(t.pips) < 0).reduce((sum, t) => sum + Math.abs(safeNumber(t.pips)), 0);
-
-      periodGrid.innerHTML = `
-        <div class="panel mini-card">
-          <h3>Selected Day</h3>
-          <div class="value ${dayStats.netProfitValue >= 0 ? "positive" : "negative"}">${formatMoney(dayStats.netProfitValue)}</div>
-          <div class="meta">Trades: ${dayStats.totalTrades} • +Pips: ${formatNum(positivePips(dayTrades), 1)} • -Pips: ${formatNum(lossPips(dayTrades), 1)}</div>
-        </div>
-        <div class="panel mini-card">
-          <h3>Selected Week</h3>
-          <div class="value ${weekStats.netProfitValue >= 0 ? "positive" : "negative"}">${formatMoney(weekStats.netProfitValue)}</div>
-          <div class="meta">Trades: ${weekStats.totalTrades} • Win rate: ${weekStats.winRate.toFixed(1)}% • Pips: ${formatNum(weekStats.netPips, 1)}</div>
-        </div>
-        <div class="panel mini-card">
-          <h3>Selected Month</h3>
-          <div class="value ${monthStats.netProfitValue >= 0 ? "positive" : "negative"}">${formatMoney(monthStats.netProfitValue)}</div>
-          <div class="meta">Trades: ${monthStats.totalTrades} • Fees: ${formatMoney(monthStats.totalFees)} • Pips: ${formatNum(monthStats.netPips, 1)}</div>
-        </div>
-      `;
-    }
-
-    function getFilteredTrades() {
-      const search = searchInput.value.trim().toLowerCase();
-      const resultValue = filterResult.value;
-      const sessionValue = filterSession.value;
-      const rulesValue = filterRules.value;
-      const pairValue = filterPair.value.trim().toLowerCase();
-      const setupValue = filterSetup.value.trim().toLowerCase();
-      const mistakeValue = filterMistake.value.trim().toLowerCase();
-      const fromDate = filterFromDate.value;
-      const toDate = filterToDate.value;
-
-      return sortTradesDesc(trades).filter((trade) => {
-        const haystack = [
-          trade.date,
-          trade.pair,
-          trade.direction,
-          trade.setupType,
-          trade.session,
-          trade.result,
-          trade.notes,
-          trade.mistakeType,
-          trade.emotionBefore,
-          trade.emotionAfter
-        ].join(" ").toLowerCase();
-
-        if (search && !haystack.includes(search)) return false;
-        if (resultValue && trade.result !== resultValue) return false;
-        if (sessionValue && trade.session !== sessionValue) return false;
-        if (rulesValue && trade.followedRules !== rulesValue) return false;
-        if (pairValue && !(trade.pair || "").toLowerCase().includes(pairValue)) return false;
-        if (setupValue && !(trade.setupType || "").toLowerCase().includes(setupValue)) return false;
-        if (mistakeValue && !(trade.mistakeType || "").toLowerCase().includes(mistakeValue)) return false;
-        if (fromDate && (trade.date || "") < fromDate) return false;
-        if (toDate && (trade.date || "") > toDate) return false;
-        return true;
-      });
-    }
-
-    function renderTable() {
-      const items = getFilteredTrades();
-      if (!items.length) {
-        tradeTableBody.innerHTML = `<tr><td colspan="21" class="empty">No trades found for the current filters.</td></tr>`;
-        return;
+    createChart("cumulativeProfitChart", "line", dates, "Cumulative Net Profit", cumulativeProfit, "#38bdf8");
+    createChart("cumulativePipsChart", "line", dates, "Cumulative Pips", cumulativePips, "#22c55e");
+    createChart("dailyNetChart", "line", dailyLabels, "Daily Net P/L", daily.map((x) => Number(x.netPL.toFixed(2))), "#a78bfa");
+    createChart("dailyPositivePipsChart", "bar", dailyLabels, "Daily Profitable Pips", daily.map((x) => Number(x.positivePips.toFixed(1))), "#22c55e", {
+      scales: {
+        x: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(148,163,184,0.08)" } },
+        y: { beginAtZero: true, ticks: { color: "#94a3b8" }, grid: { color: "rgba(148,163,184,0.08)" } }
       }
-
-      tradeTableBody.innerHTML = items.map((trade) => `
-        <tr>
-          <td>${escapeHTML(trade.date || "-")}</td>
-          <td>${escapeHTML(trade.entryTime || "-")}</td>
-          <td>${escapeHTML(trade.exitTime || "-")}</td>
-          <td>${escapeHTML(formatDuration(trade.tradeDurationMinutes || 0))}</td>
-          <td>${escapeHTML(trade.pair || "-")}</td>
-          <td>${escapeHTML(trade.direction || "-")}</td>
-          <td>${escapeHTML(trade.setupType || "-")}</td>
-          <td>${escapeHTML(trade.session || "-")}</td>
-          <td class="${safeNumber(trade.grossPL) >= 0 ? "positive" : "negative"}">${formatMoney(trade.grossPL)}</td>
-          <td class="warning">${formatMoney(trade.fees)}</td>
-          <td class="${safeNumber(trade.netPL) >= 0 ? "positive" : "negative"}">${formatMoney(trade.netPL)}<br>${resultTag(trade.result)}</td>
-          <td class="${safeNumber(trade.pips) >= 0 ? "positive" : "negative"}">${formatNum(trade.pips, 1)}</td>
-          <td>${formatNum(trade.pipsUsed, 1)}</td>
-          <td>${trade.plannedRR ?? "-"}</td>
-          <td>${trade.actualRR ?? "-"}</td>
-          <td>${rulesTag(trade.followedRules || "No")}</td>
-          <td>${escapeHTML(trade.mistakeType || "-")}</td>
-          <td>${escapeHTML([trade.emotionBefore, trade.emotionAfter].filter(Boolean).join(" → ") || "-")}</td>
-          <td>${trade.accountBalanceAfter != null ? formatMoney(trade.accountBalanceAfter) : "-"}</td>
-          <td>${escapeHTML(trade.notes || "-")}</td>
-          <td>
-            <div class="table-actions">
-              <button class="btn-muted small-btn" type="button" data-action="edit" data-id="${trade.id}">Edit</button>
-              <button class="btn-danger small-btn" type="button" data-action="delete" data-id="${trade.id}">Delete</button>
-            </div>
-          </td>
-        </tr>
-      `).join("");
-    }
-
-    function fillForm(trade) {
-      editingId = trade.id;
-      tradeDate.value = trade.date || "";
-      entryTime.value = trade.entryTime || "";
-      exitTime.value = trade.exitTime || "";
-      pair.value = trade.pair || "";
-      direction.value = trade.direction || "Buy";
-      setupType.value = trade.setupType || "";
-      session.value = trade.session || "";
-      entryPrice.value = trade.entryPrice ?? "";
-      exitPrice.value = trade.exitPrice ?? "";
-      stopLoss.value = trade.stopLoss ?? "";
-      takeProfit.value = trade.takeProfit ?? "";
-      lotSize.value = trade.lotSize ?? "";
-      riskPercent.value = trade.riskPercent ?? "";
-      grossPL.value = trade.grossPL ?? 0;
-      fees.value = trade.fees ?? 0;
-      pips.value = trade.pips ?? 0;
-      pipsUsed.value = trade.pipsUsed ?? 0;
-      plannedRR.value = trade.plannedRR ?? "";
-      actualRR.value = trade.actualRR ?? "";
-      result.value = trade.result || "Win";
-      followedRules.value = trade.followedRules || "Yes";
-      mistakeType.value = trade.mistakeType || "";
-      emotionBefore.value = trade.emotionBefore || "";
-      emotionAfter.value = trade.emotionAfter || "";
-      accountBalanceAfter.value = trade.accountBalanceAfter ?? "";
-      notes.value = trade.notes || "";
-      updateDurationPreview();
-      updateNetPreview();
-      formHeading.textContent = "Edit Trade";
-      saveTradeBtn.textContent = "Update Trade";
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-
-    async function saveTrade(event) {
-      event.preventDefault();
-      const user = auth.currentUser;
-      if (!user) {
-        setStatus("Please log in first.", "error");
-        return;
+    });
+    createChart("dailyLossPipsChart", "bar", dailyLabels, "Daily Loss Pips", daily.map((x) => Number(x.lossPips.toFixed(1))), "#ef4444", {
+      scales: {
+        x: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(148,163,184,0.08)" } },
+        y: { beginAtZero: true, ticks: { color: "#94a3b8" }, grid: { color: "rgba(148,163,184,0.08)" } }
       }
+    });
+    createChart("dailyPipsUsedChart", "line", dailyLabels, "Daily Pips Used", daily.map((x) => Number(x.pipsUsed.toFixed(1))), "#f59e0b");
+    createChart("pairPerformanceChart", "bar", pairAgg.map((x) => x[0]), "Pair Net P/L", pairAgg.map((x) => Number(x[1].toFixed(2))), "#38bdf8", { indexAxis: "y" });
+    createChart("setupPerformanceChart", "bar", setupAgg.map((x) => x[0]), "Setup Net P/L", setupAgg.map((x) => Number(x[1].toFixed(2))), "#a78bfa", { indexAxis: "y" });
+    createChart("sessionPerformanceChart", "bar", sessionAgg.map((x) => x[0]), "Session Net P/L", sessionAgg.map((x) => Number(x[1].toFixed(2))), "#22c55e", { indexAxis: "y" });
+    createChart("drawdownChart", "line", dates, "Drawdown", drawdown, "#ef4444");
 
-      const payload = getFormTrade();
-      if (!payload.date || !payload.pair) {
-        setStatus("Trade date and pair are required.", "error");
-        return;
-      }
+    const balanceTrades = chronological.filter(t => t.accountBalanceAfter != null);
+    const balanceLabels = balanceTrades.map(t => t.date);
+    const balanceValues = balanceTrades.map(t => safeNumber(t.accountBalanceAfter));
 
-      try {
-        if (editingId) {
-          const existing = trades.find((t) => t.id === editingId);
-          await updateDoc(doc(db, "users", user.uid, "trades", editingId), {
-            ...payload,
-            createdAt: existing?.createdAt || Date.now()
-          });
-          setStatus("Trade updated.", "success");
-        } else {
-          await addDoc(getUserTradesCollection(user.uid), {
-            ...payload,
-            createdAt: Date.now()
-          });
-          setStatus("Trade saved.", "success");
-        }
-        resetForm();
-      } catch (error) {
-        setStatus(error.message, "error");
-      }
-    }
-
-    async function deleteTradeById(id) {
-      const user = auth.currentUser;
-      if (!user) return;
-      const okay = confirm("Delete this trade?");
-      if (!okay) return;
-      try {
-        await deleteDoc(doc(db, "users", user.uid, "trades", id));
-        setStatus("Trade deleted.", "success");
-        if (editingId === id) resetForm();
-      } catch (error) {
-        setStatus(error.message, "error");
-      }
-    }
-
-    function renderAll() {
-      renderStats();
-      renderInsights();
-      renderPeriodGrid();
-      renderCharts();
-      renderTable();
-    }
-
-    loginBtn.addEventListener("click", login);
-    signupBtn.addEventListener("click", createAccount);
-    logoutBtn.addEventListener("click", logout);
-    tradeForm.addEventListener("submit", saveTrade);
-    resetFormBtn.addEventListener("click", resetForm);
-
-    [tradeDate, entryTime, exitTime].forEach((input) => input.addEventListener("input", updateDurationPreview));
-    [grossPL, fees].forEach((input) => input.addEventListener("input", updateNetPreview));
-
-    [searchInput, filterResult, filterSession, filterRules, filterPair, filterSetup, filterMistake, filterFromDate, filterToDate].forEach((input) => {
-      input.addEventListener("input", renderTable);
-      input.addEventListener("change", renderTable);
+    let balancePeak = 0;
+    const balanceDrawdown = [];
+    balanceValues.forEach(v => {
+      balancePeak = Math.max(balancePeak, v);
+      balanceDrawdown.push(Number((balancePeak - v).toFixed(2)));
     });
 
-    clearFiltersBtn.addEventListener("click", () => {
-      searchInput.value = "";
-      filterResult.value = "";
-      filterSession.value = "";
-      filterRules.value = "";
-      filterPair.value = "";
-      filterSetup.value = "";
-      filterMistake.value = "";
-      filterFromDate.value = "";
-      filterToDate.value = "";
-      renderTable();
+    const weekdayMap = groupNetPLBy(chartTrades, t => ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][getWeekdayNumber(t.date)]);
+    const weekdayEntries = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(day => [day, weekdayMap[day] || 0]);
+
+    const monthMap = groupNetPLBy(chartTrades, t => (t.date || "").slice(0, 7));
+    const monthEntries = Object.entries(monthMap).sort((a, b) => a[0].localeCompare(b[0]));
+
+    createChart("accountGrowthChart", "line", balanceLabels, "Account Balance", balanceValues, "#22c55e");
+    createChart("balanceDrawdownChart", "line", balanceLabels, "Balance Drawdown", balanceDrawdown, "#ef4444");
+    createChart("weekdayPerformanceChart", "bar", weekdayEntries.map(x => x[0]), "Weekday Net P/L", weekdayEntries.map(x => Number(x[1].toFixed(2))), "#38bdf8");
+    createChart("monthlyPerformanceChart", "bar", monthEntries.map(x => x[0]), "Monthly Net P/L", monthEntries.map(x => Number(x[1].toFixed(2))), "#a78bfa");
+  }
+
+  function renderAll() {
+    renderStats();
+    renderInsights();
+    renderPeriodGrid();
+    renderCharts();
+    renderTable();
+  }
+
+  loginBtn.addEventListener("click", login);
+  signupBtn.addEventListener("click", createAccount);
+  logoutBtn.addEventListener("click", logout);
+  tradeForm.addEventListener("submit", saveTrade);
+  resetFormBtn.addEventListener("click", resetForm);
+
+  [tradeDate, entryTime, exitTime].forEach((input) => input.addEventListener("input", updateDurationPreview));
+  [grossPL, fees].forEach((input) => input.addEventListener("input", updateNetPreview));
+
+  [searchInput, filterResult, filterSession, filterRules, filterPair, filterSetup, filterMistake, filterFromDate, filterToDate, filterMonth, filterWeekday, filterEmotion, filterMinProfit, filterMaxProfit, filterMinPips, filterMaxPips].forEach((input) => {
+    if (!input) return;
+    input.addEventListener("input", renderTable);
+    input.addEventListener("change", renderTable);
+  });
+
+  clearFiltersBtn.addEventListener("click", () => {
+    searchInput.value = "";
+    filterResult.value = "";
+    filterSession.value = "";
+    filterRules.value = "";
+    filterPair.value = "";
+    filterSetup.value = "";
+    filterMistake.value = "";
+    filterFromDate.value = "";
+    filterToDate.value = "";
+    filterMonth.value = "";
+    filterWeekday.value = "";
+    filterEmotion.value = "";
+    filterMinProfit.value = "";
+    filterMaxProfit.value = "";
+    filterMinPips.value = "";
+    filterMaxPips.value = "";
+    renderTable();
+  });
+
+  chartRange.addEventListener("change", renderCharts);
+  periodDate.addEventListener("change", renderPeriodGrid);
+
+  if (themeToggleBtn) themeToggleBtn.addEventListener("click", toggleTheme);
+  if (exportCsvBtn) exportCsvBtn.addEventListener("click", exportTradesToCSV);
+  if (exportJsonBtn) exportJsonBtn.addEventListener("click", exportTradesToJSON);
+  if (importJsonInput) {
+    importJsonInput.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (file) importTradesFromJSON(file);
     });
+  }
 
-    chartRange.addEventListener("change", renderCharts);
-    periodDate.addEventListener("change", renderPeriodGrid);
+  tradeTableBody.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-action]");
+    if (!button) return;
+    const { action, id } = button.dataset;
+    const trade = trades.find((item) => item.id === id);
+    if (action === "edit" && trade) fillForm(trade);
+    if (action === "delete" && id) deleteTradeById(id);
+  });
 
-    tradeTableBody.addEventListener("click", (event) => {
+  if (tradeCardsContainer) {
+    tradeCardsContainer.addEventListener("click", (event) => {
       const button = event.target.closest("button[data-action]");
       if (!button) return;
       const { action, id } = button.dataset;
@@ -1653,31 +2066,41 @@
       if (action === "edit" && trade) fillForm(trade);
       if (action === "delete" && id) deleteTradeById(id);
     });
+  }
 
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        authPanel.classList.add("hidden");
-        appShell.classList.remove("hidden");
-        logoutBtn.classList.remove("hidden");
-        userPill.classList.remove("hidden");
-        userPill.textContent = `Logged in: ${user.email}`;
-        mountTradeSubscription(user);
-      } else {
-        authPanel.classList.remove("hidden");
-        appShell.classList.add("hidden");
-        logoutBtn.classList.add("hidden");
-        userPill.classList.add("hidden");
-        userPill.textContent = "";
-        if (unsubscribeTrades) unsubscribeTrades();
-        unsubscribeTrades = null;
-        trades = [];
-        clearCharts();
-        resetForm();
-      }
-    });
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      authPanel.classList.add("hidden");
+      appShell.classList.remove("hidden");
+      logoutBtn.classList.remove("hidden");
+      userPill.classList.remove("hidden");
+      if (themeToggleBtn) themeToggleBtn.classList.remove("hidden");
+      if (exportCsvBtn) exportCsvBtn.classList.remove("hidden");
+      if (exportJsonBtn) exportJsonBtn.classList.remove("hidden");
+      if (importJsonLabel) importJsonLabel.classList.remove("hidden");
+      userPill.textContent = `Logged in: ${user.email}`;
+      mountTradeSubscription(user);
+    } else {
+      authPanel.classList.remove("hidden");
+      appShell.classList.add("hidden");
+      logoutBtn.classList.add("hidden");
+      userPill.classList.add("hidden");
+      if (themeToggleBtn) themeToggleBtn.classList.add("hidden");
+      if (exportCsvBtn) exportCsvBtn.classList.add("hidden");
+      if (exportJsonBtn) exportJsonBtn.classList.add("hidden");
+      if (importJsonLabel) importJsonLabel.classList.add("hidden");
+      userPill.textContent = "";
+      if (unsubscribeTrades) unsubscribeTrades();
+      unsubscribeTrades = null;
+      trades = [];
+      clearCharts();
+      resetForm();
+    }
+  });
 
-    updateDurationPreview();
-    updateNetPreview();
-  </script>
+  applyTheme(localStorage.getItem("tradingTheme") || "dark");
+  updateDurationPreview();
+  updateNetPreview();
+</script>
 </body>
 </html>
