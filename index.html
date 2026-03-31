@@ -380,6 +380,40 @@
       .brand h1 { font-size: 25px; }
       .span-2 { grid-column: auto; }
     }
+   .charts-grid {
+  align-items: stretch;
+}
+
+.chart-card {
+  height: 340px;
+  min-height: 340px;
+  max-height: 340px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chart-card h3 {
+  flex: 0 0 auto;
+  margin: 0 0 12px;
+}
+
+.chart-box {
+  position: relative;
+  flex: 1;
+  height: 240px;
+  min-height: 240px;
+  max-height: 240px;
+  overflow: hidden;
+}
+
+.chart-box canvas {
+  width: 100% !important;
+  height: 240px !important;
+  min-height: 240px !important;
+  max-height: 240px !important;
+  display: block !important;
+}
   </style>
 </head>
 <body>
@@ -465,18 +499,18 @@
             </select>
           </div>
         </div>
-        <div class="charts-grid">
-          <div class="panel chart-card"><h3>Cumulative Net Profit</h3><canvas id="cumulativeProfitChart" height="120"></canvas></div>
-          <div class="panel chart-card"><h3>Cumulative Pips</h3><canvas id="cumulativePipsChart" height="120"></canvas></div>
-          <div class="panel chart-card"><h3>Daily Net Profit / Loss</h3><canvas id="dailyNetChart" height="120"></canvas></div>
-          <div class="panel chart-card"><h3>Daily Profitable Pips</h3><canvas id="dailyPositivePipsChart" height="120"></canvas></div>
-          <div class="panel chart-card"><h3>Daily Loss Pips</h3><canvas id="dailyLossPipsChart" height="120"></canvas></div>
-          <div class="panel chart-card"><h3>Daily Pips Used</h3><canvas id="dailyPipsUsedChart" height="120"></canvas></div>
-          <div class="panel chart-card"><h3>Pair Performance</h3><canvas id="pairPerformanceChart" height="120"></canvas></div>
-          <div class="panel chart-card"><h3>Setup Performance</h3><canvas id="setupPerformanceChart" height="120"></canvas></div>
-          <div class="panel chart-card"><h3>Session Performance</h3><canvas id="sessionPerformanceChart" height="120"></canvas></div>
-          <div class="panel chart-card"><h3>Drawdown History</h3><canvas id="drawdownChart" height="120"></canvas></div>
-        </div>
+       <div class="charts-grid">
+  <div class="panel chart-card"><h3>Cumulative Net Profit</h3><div class="chart-box"><canvas id="cumulativeProfitChart"></canvas></div></div>
+  <div class="panel chart-card"><h3>Cumulative Pips</h3><div class="chart-box"><canvas id="cumulativePipsChart"></canvas></div></div>
+  <div class="panel chart-card"><h3>Daily Net Profit / Loss</h3><div class="chart-box"><canvas id="dailyNetChart"></canvas></div></div>
+  <div class="panel chart-card"><h3>Daily Profitable Pips</h3><div class="chart-box"><canvas id="dailyPositivePipsChart"></canvas></div></div>
+  <div class="panel chart-card"><h3>Daily Loss Pips</h3><div class="chart-box"><canvas id="dailyLossPipsChart"></canvas></div></div>
+  <div class="panel chart-card"><h3>Daily Pips Used</h3><div class="chart-box"><canvas id="dailyPipsUsedChart"></canvas></div></div>
+  <div class="panel chart-card"><h3>Pair Performance</h3><div class="chart-box"><canvas id="pairPerformanceChart"></canvas></div></div>
+  <div class="panel chart-card"><h3>Setup Performance</h3><div class="chart-box"><canvas id="setupPerformanceChart"></canvas></div></div>
+  <div class="panel chart-card"><h3>Session Performance</h3><div class="chart-box"><canvas id="sessionPerformanceChart"></canvas></div></div>
+  <div class="panel chart-card"><h3>Drawdown History</h3><div class="chart-box"><canvas id="drawdownChart"></canvas></div></div>
+</div>
         <div class="footer-note">Net profit in this tracker is calculated as <strong>gross profit/loss minus fees/commission</strong>.</div>
       </div>
 
